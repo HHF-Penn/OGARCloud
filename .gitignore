@@ -1,4 +1,5 @@
 *.secret
 *.zip
 *__pycache__*
-
+s3direct/ogarclouddeployment.js
+state.pickle

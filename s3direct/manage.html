@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OGARCloud</title>
+<style>
+	h1,h2 {
+		margin-top: 5pt;
+	}
+	div.dBlock {
+		border-style: groove;
+		background-color: #ffffff;
+		margin: 5pt;
+		overflow-y: auto;
+	}
+	form {
+	}
+	input {
+		margin: 2pt;
+	}
+	table,th,td {
+		border: 1px solid black;
+		border-collapse: collapse;
+	}
+	body {
+		background-color: #e9e9f2;
+	}
+</style>
+</head>
+<body>
+<h1>OGARCloud Management Portal</h1>
+<button type="button" onclick="logout()">Logout</button>
+<div class="dBlock">
+<h2>Galleries</h2>
+<table id="galleryTable">
+<tr><th>Gallery Name</th><th>Preview Gallery</th><th>Get Qualtrics JS</th><th>Delete</th></tr>
+</table>
+<button type="button" onclick="refresh()">Refresh</button>
+</div>
+<div class="dBlock">
+<h2>Data Collection</h2>
+	<form onsubmit="downloadData()" action="javascript:void(0);">
+		<div hidden>
+			<input type="date" id="downloadStartDate"><input type="date" id="downloadEndDate">
+		</div>
+		<input type="submit" value="Export Study Data" id="downloadSubmitButton">
+	</form>
+	<div>
+		<p>File System:</p>
+		<pre id="efsUsage">Unknown</pre>
+	</div>
+</div>
+<div class="dBlock">
+<h2>Upload Gallery</h2>
+<form onsubmit="uploadSubmit()" action="javascript:void(0);">
+	<div>
+		<div><label for="zipFileInput">Select an OGAREdit gallery export zip:</label></div>
+		<input type="file" accept=".zip,application/zip" id="zipFileInput" required>
+	</div>
+	<div>
+		<input type="submit" value="Upload" id="uploadSubmitButton">
+		<label id="uploadStatus" style="color:#0000f0;"></label>
+	</div>
+</form>
+</div>
+</body>
+<!-- deployment parameters. this file is created by the deployment script. -->
+<script src="ogarclouddeployment.js"></script>
+<script>
+"use strict";
+let endpoint = ogarcloud_endpoint;
+let bucket = ogarcloud_bucket;
+const uploadStatusLabel = document.getElementById("uploadStatus");
+const uploadSubmitButton = document.getElementById("uploadSubmitButton");
+const downloadSubmitButton = document.getElementById("downloadSubmitButton");
+const downloadDateRangeInput = [document.getElementById("downloadStartDate"), document.getElementById("downloadEndDate")]
+let requestBody = {
+	"accessKey":"",
+	"operation":"",
+	"filename":""
+};
+function login(){
+	let accessKey = getCookieValue('accessKey');
+	if(accessKey != null && accessKey != '_'){
+		// No need to verify if we get the key from a cookie
+		requestBody["accessKey"] = accessKey;
+		refresh();
+	}else{
+		accessKey = window.prompt("Enter Access Key", "");
+		requestBody["accessKey"] = accessKey;
+		requestBody["operation"] = 'test_login';
+		GetSrvJson(endpoint+'gallery', requestBody).then(function(resp){
+			if(resp != null){
+				setCookieValue("accessKey", accessKey);
+				refresh();
+			}else{
+				logout();
+			}
+		});
+	}
+}
+function logout(){
+	requestBody["accessKey"] = "";
+	setCookieValue("accessKey", "_");
+	login();
+}
+function downloadData(){
+	downloadSubmitButton.disabled = true;
+	requestBody["operation"] = "prepare_data_export";
+	var startdate = downloadDateRangeInput[0].value.replaceAll('-', '_');
+	var enddate = downloadDateRangeInput[1].value.replaceAll('-', '_');
+	if(startdate == ''){
+		startdate = '1990_01_01';
+	}
+	if(enddate == ''){
+		enddate = '2500_12_31';
+	}
+	var dateRangeString = startdate+'-'+enddate;
+	GetSrvJson(endpoint+'gallery?range='+dateRangeString, requestBody).then(function(response){
+		console.log(response);
+		downloadSubmitButton.disabled = false;
+		if(response['download'] != null){
+			window.open(response['download'], '_blank');
+		}
+	});
+	
+}
+function sleep(ms){
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+//presign_upload unzip_upload list_galleries delete_gallery
+async function uploadSubmit(){
+	uploadSubmitButton.disabled = true;
+	let zipFile = document.getElementById("zipFileInput").files[0];
+	requestBody["filename"] = zipFile['name'];
+	requestBody["operation"] = "presign_upload";
+	uploadStatusLabel.innerText = "Requesting upload credentials...";
+	let credResponse = null;
+	try{
+		credResponse = await GetSrvJson(endpoint+'gallery', requestBody);
+	}catch(e){
+		uploadStatusLabel.innerText = "Failed to retrieve upload credentials!";
+		uploadSubmitButton.disabled = false;
+		console.warn(e);
+		return;
+	}
+	uploadStatusLabel.innerText = "Uploading file...";
+	await sleep(3000); //superstitious to give upload max chance of success
+	let uploadRes = null;
+	for(var tries = 1; tries <= 3; tries++){
+		try{
+			uploadRes = await fetch(credResponse['upload'], {
+				"method": "PUT",
+				"cache": "no-cache",
+				"headers": {'Content-Type': 'application/zip'},
+				body: new Blob([zipFile], {type: 'application/zip'})
+			});
+			break;
+		}catch(error){
+			uploadStatusLabel.innerText = "Upload failed ("+tries+" times). Retrying after 10s...";
+			console.warn(error);
+			await sleep(10000);
+		}
+	}
+	if(uploadRes === null){
+		uploadStatusLabel.innerText = "Upload failed. Giving up.";
+		uploadSubmitButton.disabled = false;
+		return;
+	}
+	uploadStatusLabel.innerText = "File uploaded. Pausing for 3s...";
+	console.log("S3 Upload: ",uploadRes);
+	// Give the upload time to settle
+	await sleep(3000);
+	uploadStatusLabel.innerText = "Requesting unzip...";
+	requestBody["operation"] = "unzip_upload";
+	let unzipRes = null;
+	try{
+		unzipRes = await GetSrvJson(endpoint+'gallery', requestBody);
+	}catch(e){
+		uploadStatusLabel.innerText = "Unzip Failed!";
+		uploadSubmitButton.disabled = false;
+		console.warn(e);
+		return;
+	}
+	uploadStatusLabel.innerText = "Done.";
+	console.log("S3 Unzip: ",unzipRes);
+	refresh();
+	uploadSubmitButton.disabled = false;
+}
+function deleteGallery(gName, confirmed){
+	if(confirmed == false){
+		let c = confirm("Are you sure you wish to delete \""+gName+"\"?");
+		// User cancel
+		if(!c) return;
+	}
+	requestBody["operation"] = "delete_gallery";
+	requestBody["filename"] = gName;//FIXME 'filename' isnt the correct word for this parameter
+	GetSrvJson(endpoint+'gallery', requestBody).then(function(response){
+		console.log(response);
+		refresh();
+	});
+}
+function getQualtricsClient(bucket, gallery, endpoint){
+	fetch("ogar.js", {cache:'no-cache'})
+		.then(r => r.text())
+		.then(function(t){
+			t = t.replaceAll("\"\"/*@@ReceptorAddr@@*/",'"'+endpoint+'receive"');
+			t = t.replaceAll("\"\"/*@@GalleryPathOverride@@*/",'"uploads/'+gallery+'/gallery.json"');
+			t = t.replaceAll('""/*@@GalleryDataRoot@@*/','"'+bucket+'"');
+			let oblob = new Blob([t], {type:"text/javascript"});
+			window.open(URL.createObjectURL(oblob), '_blank');
+		});
+}
+function refresh(){
+	requestBody["operation"] = "list_galleries";
+	GetSrvJson(endpoint+'gallery', requestBody).then(function(response){
+		console.log(response);
+		let gTable = document.getElementById("galleryTable");
+		while(gTable.rows.length > 1){
+			gTable.deleteRow(1);
+		}
+		response['contents'].forEach(function(g){
+			let newRow = document.createElement("tr");
+			let c_name = document.createElement("td");
+			let c_preview = document.createElement("td");
+			let c_download = document.createElement("td");
+			let c_delete = document.createElement("td");
+			c_name.innerText = g;
+			let galleryPreviewPath = "gallery.html?GalleryPathOverride=uploads/"+g+"/gallery.json";
+			c_preview.innerHTML = "<a href=\""+galleryPreviewPath+"\">Preview</a>"; //FIXME
+			let bt_qualJS = document.createElement("button");
+			bt_qualJS.type = "button";
+			bt_qualJS.onclick = function(){getQualtricsClient(bucket, g, endpoint)};
+			bt_qualJS.innerText = "Download";
+			c_download.appendChild(bt_qualJS);
+			let bt_delete = document.createElement("button");
+			bt_delete.type = "button";
+			bt_delete.onclick = function(){deleteGallery(g, false)};
+			bt_delete.innerText = "Delete";
+			c_delete.appendChild(bt_delete);
+			newRow.appendChild(c_name);
+			newRow.appendChild(c_preview);
+			newRow.appendChild(c_download);
+			newRow.appendChild(c_delete);
+			gTable.appendChild(newRow);
+		});
+		requestBody["operation"] = "data_usage";
+		GetSrvJson(endpoint+'gallery', requestBody).then(function(response){
+			document.getElementById("efsUsage").innerText = response['usage'];
+		});
+	});
+}
+function GetSrvJson(url, body){
+	let params = {
+		"method": "POST",
+		"cache": "no-cache",
+		headers:{
+			"Content-Type": "application/json"
+		},
+		"body": JSON.stringify(body)
+	};
+	return fetch(url, params).then(function(response){
+		if(!response.ok){
+			return null;
+		}else{
+			return response.json();
+		}
+	});
+}
+function setCookieValue(key, value){
+	document.cookie = key+"="+value+";Secure;SameSite=Strict;Strict";
+}
+function getCookieValue(key){
+	let cEntry = document.cookie.split('; ').find(row => row.startsWith(key+'='));
+	if(cEntry === undefined){
+		return null;
+	}else{
+		return cEntry.split('=')[1];
+	}
+}
+login();
+</script>
+</html>
