@@ -46,5 +46,5 @@ if __name__ == '__main__':
 		print(f)
 		uploadFile(f,f,bucket)
 	else:
-		print('USAGE: <bucketid> <file to upload>
+		print('USAGE: <bucketid> <file to upload>')
 		#uploadAll(bucket)

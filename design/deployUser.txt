@@ -1,7 +1,0 @@
-API Access:
-
-AWSLambda_FullAccess
-AmazonAPIGatewayAdministrator
-AmazonS3FullAccess
-AmazonRDSFullAccess
-IAMFullAccess

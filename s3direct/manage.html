@@ -8,11 +8,49 @@
 	h1,h2 {
 		margin-top: 5pt;
 	}
-	div.dBlock {
-		border-style: groove;
-		background-color: #ffffff;
-		margin: 5pt;
+	h2 {
+		margin-left: 10px;
+	}
+	div.sidebar {
+		width: 8em;
+		display: block;
+		min-height: 100vh;
 		overflow-y: auto;
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 1;
+		background-color: #e9e9f2;
+	}
+	div.sidebar > ul {
+		padding-inline-start: 15px;
+	}
+	section {
+		margin: 0;
+		padding: 0;
+		padding-left: 8em;
+		min-width: calc(100vw - 8em);
+		top: 0;
+		left: 0;
+		display: none;
+		position: absolute;
+		background-color: #ffffff;
+		min-height: 100vh;
+		z-index: 0;
+	}
+	section:target {
+		display:block;
+	}
+	details.help {
+		border: 2px solid #757575;
+		border-radius: 10px;
+		padding: 5px;
+		margin-inline: 5px;
+		margin-block: 10px;
+	}
+	details.help > summary {
+		color: #252525;
+		cursor: pointer;
 	}
 	form {
 	}
@@ -23,22 +61,33 @@
 		border: 1px solid black;
 		border-collapse: collapse;
 	}
-	body {
-		background-color: #e9e9f2;
-	}
 </style>
 </head>
 <body>
-<h1>OGARCloud Management Portal</h1>
+<div class="sidebar">
+<b>OGARCloud</b>
+<ul>
+<li><a href="#galleries">Galleries</a></li>
+<li><a href="#data">Data Collection</a></li>
+<li><a href="#upload">Upload</a></li>
+</ul>
 <button type="button" onclick="logout()">Logout</button>
-<div class="dBlock">
+</div>
+<section id="galleries">
 <h2>Galleries</h2>
 <table id="galleryTable">
 <tr><th>Gallery Name</th><th>Preview Gallery</th><th>Get Qualtrics JS</th><th>Delete</th></tr>
 </table>
 <button type="button" onclick="refresh()">Refresh</button>
-</div>
-<div class="dBlock">
+<details class="help">
+<summary>About</summary>
+<p>This section describes the currently available galleries. If there aren't any galleries listed in the table, see "Upload" section.</p>
+<p>Click "Preview" to view the gallery without recording any data.</p>
+<p>Click "Download" (under "Get Qualtrics JS") to view Qualtrics JavaScript configuration. The text you are presented with can be copied into the JavaScript for a Qualtrics Text Question. You should totally replace any prepopulated JavaScript which Qualtrics provides.</p>
+<p>Click "Delete" to permanently delete the gallery from OGARCloud.</p>
+</details>
+</section>
+<section id="data">
 <h2>Data Collection</h2>
 	<form onsubmit="downloadData()" action="javascript:void(0);">
 		<div hidden>
@@ -50,8 +99,13 @@
 		<p>File System:</p>
 		<pre id="efsUsage">Unknown</pre>
 	</div>
-</div>
-<div class="dBlock">
+<details class="help">
+<summary>About</summary>
+<p>"Export Study Data" allows you to download a raw dump of all data which has been collected by OGARCloud.</p>
+<p>The "File System" section displays the amount of storage currently in use for saving study data in OGARCloud.</p>
+</details>
+</section>
+<section id="upload">
 <h2>Upload Gallery</h2>
 <form onsubmit="uploadSubmit()" action="javascript:void(0);">
 	<div>
@@ -63,7 +117,11 @@
 		<label id="uploadStatus" style="color:#0000f0;"></label>
 	</div>
 </form>
-</div>
+<details class="help">
+<summary>About</summary>
+<p>Use the file picker below to select a .zip file which was exported by OGAREdit, then press Upload. After the file is finished uploading, you can preview the gallery or use it in a study.</p>
+</details>
+</section>
 </body>
 <!-- deployment parameters. this file is created by the deployment script. -->
 <script src="ogarclouddeployment.js"></script>
