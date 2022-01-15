@@ -65,7 +65,7 @@
 </head>
 <body>
 <div class="sidebar">
-<b>OGARCloud</b>
+<h3>OGARCloud</h3>
 <ul>
 <li><a href="#galleries">Galleries</a></li>
 <li><a href="#data">Data Collection</a></li>
@@ -76,14 +76,15 @@
 <section id="galleries">
 <h2>Galleries</h2>
 <table id="galleryTable">
-<tr><th>Gallery Name</th><th>Preview Gallery</th><th>Get Qualtrics JS</th><th>Delete</th></tr>
+<tr><th>Gallery Name</th><th>Preview Gallery</th><th>Get Gallery Definition</th><th>Get Qualtrics JS</th><th>Delete</th></tr>
 </table>
 <button type="button" onclick="refresh()">Refresh</button>
 <details class="help">
 <summary>About</summary>
 <p>This section describes the currently available galleries. If there aren't any galleries listed in the table, see "Upload" section.</p>
 <p>Click "Preview" to view the gallery without recording any data.</p>
-<p>Click "Download" (under "Get Qualtrics JS") to view Qualtrics JavaScript configuration. The text you are presented with can be copied into the JavaScript for a Qualtrics Text Question. You should totally replace any prepopulated JavaScript which Qualtrics provides.</p>
+<p>Use "Get Gallery Definition" to download the "gallery.json" for a gallery. This is used for analyzing data</p>
+<p>Use "Get Qualtrics JS" to view Qualtrics JavaScript configuration. The text you are presented with can be copied into the JavaScript for a Qualtrics Text Question. You should totally replace any prepopulated JavaScript which Qualtrics provides.</p>
 <p>Click "Delete" to permanently delete the gallery from OGARCloud.</p>
 </details>
 </section>
@@ -96,13 +97,16 @@
 		<input type="submit" value="Export Study Data" id="downloadSubmitButton">
 	</form>
 	<div>
-		<p>File System:</p>
+		<p>You can download a tool to perform initial cleanup and processing of this data <a href="ogarcloud_process.zip">here</a>.</p>
+	</div>
+	<div>
+		<h3>File System Usage:</h3>
 		<pre id="efsUsage">Unknown</pre>
 	</div>
 <details class="help">
 <summary>About</summary>
 <p>"Export Study Data" allows you to download a raw dump of all data which has been collected by OGARCloud.</p>
-<p>The "File System" section displays the amount of storage currently in use for saving study data in OGARCloud.</p>
+<p>The "File System Usage" section displays the amount of storage currently in use for saving study data in OGARCloud.</p>
 </details>
 </section>
 <section id="upload">
@@ -282,11 +286,13 @@ function refresh(){
 			let newRow = document.createElement("tr");
 			let c_name = document.createElement("td");
 			let c_preview = document.createElement("td");
+			let c_galJson = document.createElement("td");
 			let c_download = document.createElement("td");
 			let c_delete = document.createElement("td");
 			c_name.innerText = g;
 			let galleryPreviewPath = "gallery.html?GalleryPathOverride=uploads/"+g+"/gallery.json";
 			c_preview.innerHTML = "<a href=\""+galleryPreviewPath+"\">Preview</a>"; //FIXME
+			c_galJson.innerHTML = "<a href=\"/uploads/"+g+"/gallery.json\" download>gallery.json</a>";
 			let bt_qualJS = document.createElement("button");
 			bt_qualJS.type = "button";
 			bt_qualJS.onclick = function(){getQualtricsClient(bucket, g, endpoint)};
@@ -299,6 +305,7 @@ function refresh(){
 			c_delete.appendChild(bt_delete);
 			newRow.appendChild(c_name);
 			newRow.appendChild(c_preview);
+			newRow.appendChild(c_galJson);
 			newRow.appendChild(c_download);
 			newRow.appendChild(c_delete);
 			gTable.appendChild(newRow);

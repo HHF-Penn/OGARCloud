@@ -69,13 +69,17 @@ def createLambdaRoles():
 		}),
 		'Path':'/ogarcloud-{}/'.format(deploy)
 	}
-	res['contentAdm'] = iam.create_role(**common, RoleName='oc-contentAdm-{}'.format(deploy), Description='Used to manage available gallery definitions and records experiment data.')
+	res['contentAdm'] = iam.create_role(**common, RoleName='oc-contentAdm-{}'.format(deploy), Description='Used to manage available gallery definitions and export recorded data.')
 	time.sleep(1)
 	res['contentAdm'].attach_policy(PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole')
 	time.sleep(0.5)
 	res['contentAdm'].attach_policy(PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole')
-#	time.sleep(0.5)
-#	res['contentAdm'].attach_policy(PolicyArn='arn:aws:iam::aws:policy/service-role/AWSElasticFileSystemClientFullAccess')
+	time.sleep(1)
+	res['recorder'] = iam.create_role(**common, RoleName='oc-recorder-{}'.format(deploy), Description='Records experiment data.')
+	time.sleep(1)
+	res['recorder'].attach_policy(PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole')
+	time.sleep(0.5)
+	res['recorder'].attach_policy(PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole')
 	time.sleep(1)
 	for k in res:
 		res[k] = res[k].arn
@@ -112,7 +116,7 @@ def createLambdas(roles, bucket, subnetIds, secGrp, efsAParn):
 	ret = {}
 	ret['galleryOp'] = lamb.create_function(FunctionName='galleryOp-{}'.format(deploy), Publish=True, Timeout=25, MemorySize=768, PackageType='Zip', Code={'ZipFile':galleryzipdat}, Role=roles['contentAdm'], Environment={'Variables':envVariables}, VpcConfig=vpcConfig, Tags=tags, FileSystemConfigs=fsConfigs, Runtime='python3.9', Handler='lambda_function.lambda_handler')#, Architectures=['arm64'])
 	time.sleep(10)
-	ret['receive'] = lamb.create_function(FunctionName='receive-{}'.format(deploy), Publish=True, Timeout=10, MemorySize=128, PackageType='Zip', Code={'ZipFile':receivezipdat}, Role=roles['contentAdm'], Environment={'Variables':{}}, VpcConfig=vpcConfig, Tags=tags, FileSystemConfigs=fsConfigs, Runtime='python3.9', Handler='lambda_function.lambda_handler')#, Architectures=['arm64'])
+	ret['receive'] = lamb.create_function(FunctionName='receive-{}'.format(deploy), Publish=True, Timeout=10, MemorySize=128, PackageType='Zip', Code={'ZipFile':receivezipdat}, Role=roles['recorder'], Environment={'Variables':{}}, VpcConfig=vpcConfig, Tags=tags, FileSystemConfigs=fsConfigs, Runtime='python3.9', Handler='lambda_function.lambda_handler')#, Architectures=['arm64'])
 	time.sleep(10)
 	lamb.add_permission(FunctionName='galleryOp-{}'.format(deploy), StatementId='1', Action='lambda:invokeFunction', Principal='apigateway.amazonaws.com')
 	time.sleep(2)

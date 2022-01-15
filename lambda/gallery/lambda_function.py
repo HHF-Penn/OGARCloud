@@ -1,5 +1,3 @@
-# uploadGallery
-
 import json
 import boto3
 import io
@@ -13,6 +11,20 @@ import random
 
 UPLOADMAX = 200 #mb
 EFSMNT = '/mnt/collect'
+MIME = {
+'csv':'text/csv',
+'html':'text/html',
+'svg':'image/svg+xml',
+'wasm':'application/wasm',
+'js':'text/javascript',
+'frag':'text/plain',
+'vert':'text/plain',
+'json':'application/json',
+'jpg':'image/jpeg',
+'png':'image/png',
+'mp3':'audio/mpeg',
+'zip':'application/zip'
+}
 
 def presign_upload(filename, bucket):
 	global UPLOADMAX
@@ -23,14 +35,19 @@ def presign_upload(filename, bucket):
 		'body': json.dumps({"upload":presigned})
 	}
 def unzip_upload(filename, bucket):
+	global MIME
 	#https://medium.com/@johnpaulhayes/how-extract-a-huge-zip-file-in-an-amazon-s3-bucket-by-using-aws-lambda-and-python-e32c6cf58f06    
 	s3 = boto3.resource('s3')
 	zip_obj = s3.Object(bucket, "zip/"+filename)
 	buf = io.BytesIO(zip_obj.get()["Body"].read())
 	z = zipfile.ZipFile(buf)
 	for member_name in z.namelist():
+		mime = 'binary/octet-stream'
+		suffix = member_name.split('.')[-1].lower()
+		if suffix in MIME:
+			mime = MIME[suffix]
 		file_info = z.getinfo(member_name)
-		s3.meta.client.upload_fileobj(z.open(member_name), Bucket=bucket, Key='uploads/'+member_name)
+		s3.meta.client.upload_fileobj(z.open(member_name), Bucket=bucket, Key='uploads/'+member_name, ExtraArgs={'ContentType': mime, 'CacheControl': 'no-cache'})
 	return {
 		  'statusCode': 200,
 		  'body': json.dumps('Successfully unzipped')

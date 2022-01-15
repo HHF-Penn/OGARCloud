@@ -9,6 +9,7 @@ s3 = sess.resource('s3')
 files = [
 'gallery.html',
 'manage.html',
+'ogarcloud_process.zip',
 'ogar.js',
 'ogarclouddeployment.js',
 'gl/world.frag',
@@ -23,6 +24,7 @@ mime = {
 "html":"text/html",
 "svg":"image/svg+xml",
 "wasm":"application/wasm",
+'zip':'application/zip',
 "js":"text/javascript",
 "frag":"text/plain",
 "vert":"text/plain"
@@ -33,7 +35,7 @@ def uploadFile(local, remote, bucket):
 	time.sleep(1)
 	extension = local.split(".")[-1]
 	mtype = mime[extension]
-	s3.meta.client.upload_file(local, bucket, remote, ExtraArgs={'ContentType': mtype});
+	s3.meta.client.upload_file(local, bucket, remote, ExtraArgs={'ContentType': mtype, 'CacheControl':'no-cache'});
 def uploadAll(bucket):
 	for f in files:
 		uploadFile('s3direct/'+f, f, bucket)
