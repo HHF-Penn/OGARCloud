@@ -61,51 +61,73 @@
 		border: 1px solid black;
 		border-collapse: collapse;
 	}
+	pre {
+		white-space: pre-wrap;
+	}
 </style>
 </head>
 <body>
 <div class="sidebar">
-<h3>OGARCloud</h3>
-<ul>
-<li><a href="#galleries">Galleries</a></li>
-<li><a href="#data">Data Collection</a></li>
-<li><a href="#upload">Upload</a></li>
-</ul>
-<button type="button" onclick="logout()">Logout</button>
+	<h3>OGARCloud</h3>
+	<ul>
+		<li><a href="#galleries">Galleries</a></li>
+		<li><a href="#data">Data Collection</a></li>
+		<li><a href="#upload">Upload</a></li>
+		<li><a href="#admin">Administration</a></li>
+	</ul>
+	<div>
+		<button type="button" onclick="refresh()">Refresh</button>
+	</div>
+	<div>
+		<button type="button" onclick="logout()">Logout</button>
+	</div>
 </div>
 <section id="galleries">
 <h2>Galleries</h2>
 <table id="galleryTable">
-<tr><th>Gallery Name</th><th>Preview Gallery</th><th>Get Gallery Definition</th><th>Get Qualtrics JS</th><th>Delete</th></tr>
+<tr><th>Gallery Name</th><th>Preview Gallery</th><th>Get Gallery Definition</th><th>Get Embeddable JS</th><th>Delete</th></tr>
 </table>
-<button type="button" onclick="refresh()">Refresh</button>
 <details class="help">
 <summary>About</summary>
 <p>This section describes the currently available galleries. If there aren't any galleries listed in the table, see "Upload" section.</p>
 <p>Click "Preview" to view the gallery without recording any data.</p>
 <p>Use "Get Gallery Definition" to download the "gallery.json" for a gallery. This is used for analyzing data</p>
-<p>Use "Get Qualtrics JS" to view Qualtrics JavaScript configuration. The text you are presented with can be copied into the JavaScript for a Qualtrics Text Question. You should totally replace any prepopulated JavaScript which Qualtrics provides.</p>
-<p>Click "Delete" to permanently delete the gallery from OGARCloud.</p>
+<p>Use "Get Embeddable JS" to view the JavaScript configuration for a gallery. The text you are presented with can be embedded into a webpage or directly copied into a Qualtrics Text Question Embedded JavaScript. If you are using Qualtrics, you should totally replace any prepopulated JavaScript which Qualtrics provides.</p>
+<p>Click "Delete" to permanently delete the gallery from OGARCloud. Any ongoing usage of the gallery will be broken.</p>
 </details>
 </section>
 <section id="data">
 <h2>Data Collection</h2>
-	<form onsubmit="downloadData()" action="javascript:void(0);">
-		<div hidden>
-			<input type="date" id="downloadStartDate"><input type="date" id="downloadEndDate">
-		</div>
-		<input type="submit" value="Export Study Data" id="downloadSubmitButton">
+<h3>Regenerate Data</h3>
+	<form onsubmit="regenerateExports()" action="javascript:void(0);">
+		<input type="submit" value="Regenerate Data Exports" id="regenerateDataSubmit"> <pre id="regenerateDataStatus"></pre>
+		<p>Exports last regenerated: <pre id="exportGenTime">Unknown</pre></p>
 	</form>
-	<div>
-		<p>You can download a tool to perform initial cleanup and processing of this data <a href="ogarcloud_process.zip">here</a>.</p>
-	</div>
+<h3>Manage Collected Data</h3>
+	<form onsubmit="downloadData()" action="javascript:void(0);">
+		<label for="dataDownloadTarget">Gallery:</label>
+		<select id="dataDownloadTarget" required>
+			<option value="">-</option>
+		</select>
+		<div>
+			<input type="submit" value="Download Gallery Data" id="downloadSubmitButton">
+		</div>
+	</form>
+	<form onsubmit="deleteData()" action="javascript:void(0);">
+		<input type="submit" value="Delete Gallery Data">
+	</form>
+	<p>You can download a tool to perform initial cleanup and processing of this data <a href="ogarcloud_process.zip">here</a>.</p>
 	<div>
 		<h3>File System Usage:</h3>
 		<pre id="efsUsage">Unknown</pre>
 	</div>
+	<div>
+	</div>
 <details class="help">
 <summary>About</summary>
-<p>"Export Study Data" allows you to download a raw dump of all data which has been collected by OGARCloud.</p>
+<p>Press "Regenerate Data Exports" to prepare study data for export. This will prepare all data for all galleries up to 10 minutes ago. Then, you can export data for a specific gallery. This operation may take a long time, up to 15 minutes. You can tell when the operation is complete when the "Last Regenerated" time changes.</p>
+<p>Select a gallery in the dropdown labeled "Gallery", then press "Download Gallery Data". This will download all data for that gallery up until the "Last Regenerated" time.</p>
+<p>You should process downloaded data with the provided tool. For more info, read the README included with the tool.</p>
 <p>The "File System Usage" section displays the amount of storage currently in use for saving study data in OGARCloud.</p>
 </details>
 </section>
@@ -126,6 +148,26 @@
 <p>Use the file picker below to select a .zip file which was exported by OGAREdit, then press Upload. After the file is finished uploading, you can preview the gallery or use it in a study.</p>
 </details>
 </section>
+<section id="admin">
+<h2>Administration</h2>
+<h3>Access Key</h3>
+	<form onsubmit="changeAccessKey()" action="javascript:void(0);">
+		<input type="submit" value="Change Access Key" id="changeAccessKeySubmit">
+	</form>
+<h3>Admin Console</h3>
+	<div id="adminConsoleResult" style="background-color: #fafafa;"></div>
+	<form onsubmit="adminConsole()" action="javascript:void(0);">
+		<div>
+		<label for="adminConsoleConsent">I understand that this can irrecoverably destroy data and circumvent all protections:</label><input type="checkbox" id="adminConsoleConsent" required>
+		</div>
+		<input type="text" id="adminConsoleCommand"><input type="submit" value="Submit">
+	</form>
+<details class="help">
+<summary>About</summary>
+<p>Press "Change Access Key" to regenerate an access key to access OGARCloud. This should be done periodically, especially when access should change hands. You will only see the new access key once. If the current access key is lost, it will have to be manually reset by whoever supports OGARCloud for you.</p>
+<p>After the access key is changed, logout, and then wait 30 seconds before logging back in.</p>
+</details>
+</section>
 </body>
 <!-- deployment parameters. this file is created by the deployment script. -->
 <script src="ogarclouddeployment.js"></script>
@@ -136,7 +178,11 @@ let bucket = ogarcloud_bucket;
 const uploadStatusLabel = document.getElementById("uploadStatus");
 const uploadSubmitButton = document.getElementById("uploadSubmitButton");
 const downloadSubmitButton = document.getElementById("downloadSubmitButton");
-const downloadDateRangeInput = [document.getElementById("downloadStartDate"), document.getElementById("downloadEndDate")]
+const dataDownloadTargetMenu = document.getElementById("dataDownloadTarget");
+const regenerateDataSubmitButton = document.getElementById("regenerateDataSubmit");
+const regenerateDataStatusLabel = document.getElementById("regenerateDataStatus");
+const regenerateExportTimeLabel = document.getElementById("exportGenTime");
+
 let requestBody = {
 	"accessKey":"",
 	"operation":"",
@@ -167,29 +213,65 @@ function logout(){
 	setCookieValue("accessKey", "_");
 	login();
 }
-function downloadData(){
+
+async function adminConsole(){
+	let comm = document.getElementById("adminConsoleCommand").value;
+	requestBody["operation"] = 'console_exec';
+	requestBody["filename"] = comm; //FIXME badly named reused field
+	let response = await GetSrvJson(endpoint+'gallery', requestBody);
+	console.log("Command Response:", response)
+	let resDiv = document.getElementById("adminConsoleResult");
+	resDiv.innerHTML = "<pre>Return Code:"+response["ret"]+"\nSTDERR:"+atob(response['stderr'])+"\nSTDOUT:"+atob(response['stdout'])+"</pre>";
+}
+
+async function regenerateExports(){
+	regenerateDataSubmitButton.disabled = true;
+	requestBody["operation"] = "regenerate_exports";
+	regenerateDataStatusLabel.innerText = "Submitted, please wait...";
+	let response = {}
+	//try{
+	//FIXME this is not ideal. Handling long computations without polling isn't very easy.
+	regenerateDataSubmitButton.disabled = false;
+	regenerateDataStatusLabel.innerText = "The regeneration has been triggered. The regeneration is complete once the \"Exports last regenerated\" time updates (when the 'refresh' button is pressed). This should not take more than 15 minutes. If it takes more than 15 minutes and the 'refresh' button to update, then manual intervention may be required.";
+	response = await GetSrvJson(endpoint+'gallery', requestBody);
+	//	regenerateDataStatusLabel.innerText = response['message'];
+	//}catch(err){
+	//	regenerateDataStatusLabel.innerText = "Regeneration failed. Contact your administrator.";
+	//}
+	//refresh();
+}
+
+async function deleteData(){
+	if( !(dataDownloadTargetMenu.reportValidity())){
+		return;
+	}
+	requestBody["operation"] = "delete_export";
+	let response = await GetSrvJson(endpoint+'gallery?target='+dataDownloadTargetMenu.value, requestBody);
+	window.alert(response['message']);
+	refresh();
+}
+
+async function downloadData(){
 	downloadSubmitButton.disabled = true;
 	requestBody["operation"] = "prepare_data_export";
-	var startdate = downloadDateRangeInput[0].value.replaceAll('-', '_');
-	var enddate = downloadDateRangeInput[1].value.replaceAll('-', '_');
-	if(startdate == ''){
-		startdate = '1990_01_01';
+	let response = await GetSrvJson(endpoint+'gallery?target='+dataDownloadTargetMenu.value, requestBody);
+	console.log(response);
+	downloadSubmitButton.disabled = false;
+	if(response['download'] != null){
+		window.open(response['download'], '_blank');
 	}
-	if(enddate == ''){
-		enddate = '2500_12_31';
-	}
-	var dateRangeString = startdate+'-'+enddate;
-	GetSrvJson(endpoint+'gallery?range='+dateRangeString, requestBody).then(function(response){
-		console.log(response);
-		downloadSubmitButton.disabled = false;
-		if(response['download'] != null){
-			window.open(response['download'], '_blank');
-		}
-	});
-	
 }
 function sleep(ms){
 	return new Promise(resolve => setTimeout(resolve, ms));
+}
+async function changeAccessKey(){
+	requestBody["operation"] = "change_accesskey";
+	let changeAccessKeyButton = document.getElementById("changeAccessKeySubmit");
+	changeAccessKeyButton.disabled = true;
+	let resp = await GetSrvJson(endpoint+'gallery', requestBody);
+	changeAccessKeyButton.disabled = false;
+	console.log("New Access Key:"+resp["newAccessKey"]);
+	window.alert("New AccessKey is \""+resp["newAccessKey"]+"\". Make sure you record this, it cannot be recovered after you close this popup!");
 }
 //presign_upload unzip_upload list_galleries delete_gallery
 async function uploadSubmit(){
@@ -263,58 +345,71 @@ function deleteGallery(gName, confirmed){
 		refresh();
 	});
 }
-function getQualtricsClient(bucket, gallery, endpoint){
+function getJSClient(bucket, gallery, endpoint){
 	fetch("ogar.js", {cache:'no-cache'})
 		.then(r => r.text())
 		.then(function(t){
 			t = t.replaceAll("\"\"/*@@ReceptorAddr@@*/",'"'+endpoint+'receive"');
 			t = t.replaceAll("\"\"/*@@GalleryPathOverride@@*/",'"uploads/'+gallery+'/gallery.json"');
 			t = t.replaceAll('""/*@@GalleryDataRoot@@*/','"'+bucket+'"');
+			t = t.replaceAll('""/*@@GalleryID@@*/', '"'+gallery+'"');
 			let oblob = new Blob([t], {type:"text/javascript"});
 			window.open(URL.createObjectURL(oblob), '_blank');
 		});
 }
-function refresh(){
+async function refresh(){
 	requestBody["operation"] = "list_galleries";
-	GetSrvJson(endpoint+'gallery', requestBody).then(function(response){
-		console.log(response);
-		let gTable = document.getElementById("galleryTable");
-		while(gTable.rows.length > 1){
-			gTable.deleteRow(1);
-		}
-		response['contents'].forEach(function(g){
-			let newRow = document.createElement("tr");
-			let c_name = document.createElement("td");
-			let c_preview = document.createElement("td");
-			let c_galJson = document.createElement("td");
-			let c_download = document.createElement("td");
-			let c_delete = document.createElement("td");
-			c_name.innerText = g;
-			let galleryPreviewPath = "gallery.html?GalleryPathOverride=uploads/"+g+"/gallery.json";
-			c_preview.innerHTML = "<a href=\""+galleryPreviewPath+"\">Preview</a>"; //FIXME
-			c_galJson.innerHTML = "<a href=\"/uploads/"+g+"/gallery.json\" download>gallery.json</a>";
-			let bt_qualJS = document.createElement("button");
-			bt_qualJS.type = "button";
-			bt_qualJS.onclick = function(){getQualtricsClient(bucket, g, endpoint)};
-			bt_qualJS.innerText = "Download";
-			c_download.appendChild(bt_qualJS);
-			let bt_delete = document.createElement("button");
-			bt_delete.type = "button";
-			bt_delete.onclick = function(){deleteGallery(g, false)};
-			bt_delete.innerText = "Delete";
-			c_delete.appendChild(bt_delete);
-			newRow.appendChild(c_name);
-			newRow.appendChild(c_preview);
-			newRow.appendChild(c_galJson);
-			newRow.appendChild(c_download);
-			newRow.appendChild(c_delete);
-			gTable.appendChild(newRow);
-		});
-		requestBody["operation"] = "data_usage";
-		GetSrvJson(endpoint+'gallery', requestBody).then(function(response){
-			document.getElementById("efsUsage").innerText = response['usage'];
-		});
+	let response = await GetSrvJson(endpoint+'gallery', requestBody);
+	console.log(response);
+	let gTable = document.getElementById("galleryTable");
+	while(gTable.rows.length > 1){
+		gTable.deleteRow(1);
+	}
+	response['contents'].forEach(function(g){
+		let newRow = document.createElement("tr");
+		let c_name = document.createElement("td");
+		let c_preview = document.createElement("td");
+		let c_galJson = document.createElement("td");
+		let c_download = document.createElement("td");
+		let c_delete = document.createElement("td");
+		c_name.innerText = g;
+		let galleryPreviewPath = "gallery.html?GalleryPathOverride=uploads/"+g+"/gallery.json";
+		c_preview.innerHTML = "<a href=\""+galleryPreviewPath+"\">Preview</a>"; //FIXME
+		c_galJson.innerHTML = "<a href=\"/uploads/"+g+"/gallery.json\" download>gallery.json</a>";
+		let bt_qualJS = document.createElement("button");
+		bt_qualJS.type = "button";
+		bt_qualJS.onclick = function(){getJSClient(bucket, g, endpoint)};
+		bt_qualJS.innerText = "Download";
+		c_download.appendChild(bt_qualJS);
+		let bt_delete = document.createElement("button");
+		bt_delete.type = "button";
+		bt_delete.onclick = function(){deleteGallery(g, false)};
+		bt_delete.innerText = "Delete";
+		c_delete.appendChild(bt_delete);
+		newRow.appendChild(c_name);
+		newRow.appendChild(c_preview);
+		newRow.appendChild(c_galJson);
+		newRow.appendChild(c_download);
+		newRow.appendChild(c_delete);
+		gTable.appendChild(newRow);
 	});
+	// Find the EFS data usage
+	requestBody["operation"] = "data_usage";
+	response = await GetSrvJson(endpoint+'gallery', requestBody);
+	document.getElementById("efsUsage").innerText = response['usage'];
+	// Find out what the latest data exports are
+	requestBody["operation"] = "list_exports";
+	response = await GetSrvJson(endpoint+'gallery', requestBody);
+	while(dataDownloadTargetMenu.children.length > 1){
+		dataDownloadTargetMenu.removeChild(dataDownloadTargetMenu.children[1]);
+	}
+	for(var dTarget of response['targets']){
+		let tEntry = document.createElement("option");
+		tEntry.id = dTarget;
+		tEntry.innerText = dTarget;
+		dataDownloadTargetMenu.appendChild(tEntry);
+	}
+	regenerateExportTimeLabel.innerText = response['exportTime'];
 }
 function GetSrvJson(url, body){
 	let params = {
