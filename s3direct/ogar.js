@@ -33,7 +33,8 @@ var GalleryOpts = {
 	"ArtSolidColor":false,
 	"ReceptorAddr":""/*@@ReceptorAddr@@*/,
 	"GalleryPathOverride":""/*@@GalleryPathOverride@@*/,
-	"GalleryDataRoot":""/*@@GalleryDataRoot@@*/
+	"GalleryDataRoot":""/*@@GalleryDataRoot@@*/,
+	"GalleryID":""/*@@GalleryID@@*/
 };
 
 // Enable or disable the 'next' button in qualtrics
@@ -48,6 +49,7 @@ function nextButtonInterface(enable){
 nextButtonInterface(false);
 
 if (!window.requestPostAnimationFrame) {
+//	window.requestPostAnimationFrame = window.requestAnimationFrame;
 	window.requestPostAnimationFrame = function(task) {
 		requestAnimationFrame(() => {
 			setTimeout(task, 0);
@@ -160,7 +162,7 @@ console.log("QID: ",QID);
 var gallerydefpath = (GalleryOpts.GalleryPathOverride == "") ? "gallery.json" : GalleryOpts.GalleryPathOverride;
 
 class MessageReportBundler{
-	constructor(addr, id, gallerypath, sec){
+	constructor(addr, id, galleryid, sec){
 		this.addr = addr;
 		this.id = id;
 		this.cleanedup = false;
@@ -168,7 +170,7 @@ class MessageReportBundler{
 		this.perf_ = {};
 		this.pos_ = {};
 		this.reset();
-		this.introduce(gallerypath);
+		this.introduce(galleryid);
 		this.interval = setInterval(this.send.bind(this), sec*1000);
 	}
 	reset(){
@@ -186,11 +188,11 @@ class MessageReportBundler{
 		this.pos_['pitch'] = [];
 		this.pos_['yaw'] = [];
 	}
-	introduce(gallerypath){
+	introduce(galleryid){
 		const msg = {
 			"id":this.id,
 			"tOrigin":this.tOrigin,
-			"gallery":gallerypath
+			"gallery":galleryid
 		};
 		this.sendmsg(msg);
 	}
@@ -256,7 +258,7 @@ class MessageReportBundler{
 		this.evt_['msg'].push(msg);
 	}
 }
-const E = new MessageReportBundler(GalleryOpts["ReceptorAddr"], QID, gallerydefpath, 10);
+const E = new MessageReportBundler(GalleryOpts["ReceptorAddr"], QID, GalleryOpts["GalleryID"], 10);
 E.evt("epoch");
 //A small class to handle required resources
 class recursiveLoader{
@@ -791,7 +793,7 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 			alpha: false,
 			stencil: false,
 			antialias: false,
-			desynchronized: true,
+		//	desynchronized: true,
 		}
 		var gl = this.glCanvas.getContext("webgl2", glHints);
 		if(gl === null){
@@ -1777,9 +1779,7 @@ loader.onallload = function(){
 	E.evt("Everything Loaded");
 	ctx.clearRect(0, 0, overlayCanv.width, overlayCanv.height);
 	gallery = new Gallery(fsDiv, gallerydata, images, audios, E, QID);
-	if(isQual){
-		OGARgallery = gallery;
-	}
+	OGARgallery = gallery;
 };
 loader.start();
 

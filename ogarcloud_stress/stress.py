@@ -55,7 +55,11 @@ class OgarFakeClient:
 		self.pos_['pitch'] = []
 		self.pos_['yaw'] = []
 	async def introduce(self):
-		await self.sendmsg({'id':self.id, 'tOrigin':msTime(), 'gallery':'none, stresstest'})
+		await self.sendmsg({
+			'id':self.id,
+			'tOrigin':msTime(),
+			'gallery':random.choice(['stresstest1','stresstest2','stresstest3'])
+		})
 	async def cleanup(self):
 		if self.cleanedup:
 			return
@@ -159,7 +163,8 @@ async def poolStress(count_clients, sec_ramp, sec_full):
 	await asyncio.gather(*loops)
 	print("Done")
 
-asyncio.run(poolStress(count_clients=200, sec_ramp=120, sec_full=180))
+#asyncio.run(poolStress(count_clients=200, sec_ramp=120, sec_full=180))
 #asyncio.run(poolStress(count_clients=50, sec_ramp=60, sec_full=120))
+asyncio.run(poolStress(count_clients=500, sec_ramp=400, sec_full=200))
 print("Message Count:", TOTALMSG)
 print("Message Failures:", FAILMSG)
