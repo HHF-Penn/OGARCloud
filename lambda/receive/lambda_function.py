@@ -8,6 +8,8 @@ import struct
 import sqlite3
 import io
 import os
+import string
+import re
 
 EFSMNT = '/mnt/collect'
 INITTIME = datetime.datetime.now(datetime.timezone.utc)
@@ -62,7 +64,8 @@ def numericId(textId):
 	return int(textId.split('_')[1])
 def registerNew(j, ip):
 	global dbcursor,regQString
-	dbcursor.execute(regQString, (j['id'],j['gallery'],j['tOrigin'],int(time.time()*1000),ip))
+	galleryID = re.sub(('[^'+string.ascii_letters+string.digits+']'), '_', j['gallery'])
+	dbcursor.execute(regQString, (j['id'],galleryID,j['tOrigin'],int(time.time()*1000),ip))
 def recordEvents(j):
 	global dbcursor,posQString,perfQString,evtQString
 	tOrigin = j['tOrigin']
