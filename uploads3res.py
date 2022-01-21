@@ -17,7 +17,19 @@ files = [
 'res/audio.svg',
 'res/left-click.svg',
 'res/pause.svg',
-'res/play.svg'
+'res/play.svg',
+'private/accessKeyHash.bin',
+'tutorial/ogarclouddatacollection.jpg',
+'tutorial/ogarcloudprocess.jpg',
+'tutorial/ogarcloudsidebar.jpg',
+'tutorial/ogarcloudupload.jpg',
+'tutorial/ogareditgalleryinterface.jpg',
+'tutorial/ogareditimagefolder.jpg',
+'tutorial/ogareditimageinterface.jpg',
+'tutorial/ogareditselectwall.jpg',
+'tutorial/ogareditui.jpg',
+'tutorial/ogareditwallcurator.jpg',
+'tutorial/ogartutorial.html'
 ]
 
 mime = {
@@ -27,7 +39,10 @@ mime = {
 'zip':'application/zip',
 "js":"text/javascript",
 "frag":"text/plain",
-"vert":"text/plain"
+"vert":"text/plain",
+"jpg":"image/jpeg",
+"png":"image/png",
+"bin":"application/octet-stream"
 }
 
 

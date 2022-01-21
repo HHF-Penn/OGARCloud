@@ -4,6 +4,8 @@ import os
 import time
 import random
 import string
+import secrets
+import hashlib
 import boto3 as boto
 
 AWSSESS = None
@@ -99,7 +101,16 @@ def createSecurityGroup(vpcId):
 	])
 	return sg['GroupId']
 def createLambdas(roles, bucket, subnetIds, secGrp, efsAParn):
-	envVariables = {'accessKey':''.join([random.choice(string.digits + string.ascii_lowercase) for i in range(16)]),'bucket':bucket}
+	# The pepper is stored in an environment variable in the lambda. Even if the hash stored in s3 is stolen, the pepper is needed to attack it.
+	accessPepper = ''.join([secrets.choice(string.digits + string.ascii_letters) for i in range(32)])
+	envVariables = {'bucket':bucket,'accessPepper':accessPepper}
+	manageURL = 'https://{}.s3.{}.amazonaws.com/manage.html'.format(bucket, getRegion())
+	accessKey = ''.join([secrets.choice(string.digits + string.ascii_letters) for i in range(16)])
+	print("Manage: "+manageURL+" AccessKey: "+accessKey)
+	accessKeyHash = hashlib.scrypt(password=accessKey.encode('UTF-8'), salt=accessPepper.encode('UTF-8'), n=16384, r=8, p=1)
+	print("AccessKeyHash: ",accessKeyHash)
+	with open('s3direct/private/accessKeyHash.bin', 'wb') as accessKeyHashFP:
+		accessKeyHashFP.write(accessKeyHash)
 	print("Environment variables: "+json.dumps(envVariables))
 	sess = getSession()
 	lamb = sess.client('lambda')
@@ -114,7 +125,7 @@ def createLambdas(roles, bucket, subnetIds, secGrp, efsAParn):
 	with open('lambda/gallery.zip', 'rb') as fp:
 		galleryzipdat = fp.read()
 	ret = {}
-	ret['galleryOp'] = lamb.create_function(FunctionName='galleryOp-{}'.format(deploy), Publish=True, Timeout=25, MemorySize=768, PackageType='Zip', Code={'ZipFile':galleryzipdat}, Role=roles['contentAdm'], Environment={'Variables':envVariables}, VpcConfig=vpcConfig, Tags=tags, FileSystemConfigs=fsConfigs, Runtime='python3.9', Handler='lambda_function.lambda_handler')#, Architectures=['arm64'])
+	ret['galleryOp'] = lamb.create_function(FunctionName='galleryOp-{}'.format(deploy), Publish=True, Timeout=900, MemorySize=5120, PackageType='Zip', Code={'ZipFile':galleryzipdat}, Role=roles['contentAdm'], Environment={'Variables':envVariables}, VpcConfig=vpcConfig, Tags=tags, FileSystemConfigs=fsConfigs, Runtime='python3.9', Handler='lambda_function.lambda_handler')#, Architectures=['arm64'])
 	time.sleep(10)
 	ret['receive'] = lamb.create_function(FunctionName='receive-{}'.format(deploy), Publish=True, Timeout=10, MemorySize=128, PackageType='Zip', Code={'ZipFile':receivezipdat}, Role=roles['recorder'], Environment={'Variables':{}}, VpcConfig=vpcConfig, Tags=tags, FileSystemConfigs=fsConfigs, Runtime='python3.9', Handler='lambda_function.lambda_handler')#, Architectures=['arm64'])
 	time.sleep(10)
@@ -250,7 +261,7 @@ def createBucket(roles):
 		"AllowedHeaders": ["*"],
 		"AllowedMethods": ["GET","PUT","POST","HEAD","DELETE"],
 		"AllowedOrigins": ["https://*"],
-		"ExposeHeaders": []
+		"ExposeHeaders": ["Access-Control-Allow-Origin","Access-Control-Allow-Methods"]
 	}]});
 	# Tagging
 	b_tagging = b.Tagging()

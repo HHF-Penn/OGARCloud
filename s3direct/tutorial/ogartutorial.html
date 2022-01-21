@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OGAR Tutorial</title>
+<style>
+#TOC {
+ background-color: #d6fff3;
+ padding: 5pt;
+ display: inline-block;
+ border-style: solid;
+ border-width: 1px;
+}
+body{
+  max-width: 7.5in;
+  margin: auto;
+}
+</style>
+</head>
+<body>
+<h1>OGAR Tutorial</h1>
+<p>This document walks through the concepts and process to create and run a study with OGAR. Each tool is incompletely covered, but this tutorial should help explain how the different tools in OGAR work together.</p>
+<div>
+<div id="TOC">
+<p><em>Contents:</em></p>
+<ol>
+<li><a href="#concepts">General Concepts</a></li>
+<li><a href="#gettingstarted">Getting Started</a></li>
+<li><a href="#ogareditconcepts">OGAREdit Concepts</a></li>
+<li><a href="#createsimple">Creating a Simple Gallery</a></li>
+<li><a href="#ogarcloudconcepts">OGARCloud Concepts</a></li>
+<li><a href="#uploadgallery">Uploading a Gallery to OGARCloud</a></li>
+<li><a href="#embedding">OGAR Embedding Considerations</a></li>
+<li><a href="#dataprocessing">Processing Data from OGARCloud</a></li>
+</ol>
+</div>
+</div>
+
+<section id="concepts">
+<h2>1. General Concepts</h2>
+<p>
+OGAR, or the Open Gallery for Arts Research, is a platform for researchers to use navigable virtual art galleries in their research. OGAR is a system composed of multiple services and tools which work together to design and serve galleries, and to record user actions in galleries. The main components are: 
+</p>
+<ul>
+<li><em>OGAREdit:</em> A standalone, Java-based, gallery design and curation tool.</li>
+<li><em>OGARCloud:</em> A cloud-based management portal. Galleries created by OGAREdit are uploaded here. They can then be embedded in surveys or webpages and served to participants. In addition, researchers download collected data from here.</li>
+<li><em>OGAR Client Embed:</em> An instance of the OGAR client running in a participant's web-browser. In the most common case, this will be a part of a Qualtrics Survey.</li>
+<li><em>OGARCloud Data Processing Tool:</em> A standalone, Python-based, utility to process the raw data returned by OGARCloud.</li>
+</ul>
+<p>The workflow in OGAR is typically:</p>
+<p>"Create a gallery in OGAREdit" → "Upload the gallery to OGARCloud" → "Embed the JavaScript provided by OGARCloud in a webpage or Qualtrics survey" → "Run the survey" → "Download and process the collected data"</p>
+</section>
+
+<section id="gettingstarted">
+<h2>2. Getting Started</h2>
+<p>To begin, you need the following software:</p>
+<ul>
+<li>Python: <a href="https://www.python.org/downloads/">www.python.org/downloads/</a></li>
+<li>Java: <a href="https://java.com/en/download/">java.com/en/download/</a></li>
+</ul>
+<p>In addition, you need access to the following online services:</p>
+<ul>
+<li>A full Qualtrics subscription, or other survey provider that supports embedding JavaScript</li>
+<li>A deployed instance of OGARCloud</li>
+</ul>
+</section>
+
+<section id="ogareditconcepts">
+<h2>3. OGAREdit Concepts</h2>
+<p><em>The full documentation for OGAREdit is available in the USERMANUAL.html that is packaged with OGAREdit.</em></p>
+<p>OGAREdit is a curation tool that runs on your computer. You need to have Java installed to use this tool.<p>
+<p>The tool creates files that end in ".ogr". An ogr file stores all of the resources associated with a project, including texts, images, audio, and floorplans. In addition, ogr files store galleries, which are combinations of a floorplan with other resources. In OGAREdit, resources in galleries are stored 'by reference'. This means that, for example, if you use an image in two galleries, then a change to the image will affect both galleries. If you want to reuse resources between galleries, consider if you should duplicate the resource first, so that each gallery has its own copy. Used correctly, the 'reference'-style access can allow you to build a library of base resources from which you can quickly build new galleries.</p>
+<p>To use OGAREdit, you will first create the resources you want to use in your gallery. Then, you will combine all of your resources in your gallery. Finally, you export the finished gallery for use in OGARCloud.</p>
+</section>
+
+<section id="createsimple">
+<h2>4. Creating a Simple Gallery</h2>
+<p>First, find your copy of OGAREdit. Then, launch OGAREdit by running OGAREdit.bat.</p>
+<p>You should be greeted with a window that looks like this:</p>
+<img src="ogareditui.jpg" alt="An image of the OGAREdit main interface">
+<p>To begin, create a new project database with File/New. This database will store all of our resources (e.g. Images, Floorplans, and Galleries), but it starts out empty.</p>
+<p>To create a new image, right-click on Image and press 'Create'. This will create a new Unnamed Image.</p>
+<img src="ogareditimagefolder.jpg" alt="An image of the OGAREdit tree interface Image tag with Unnamed Image">
+<p>To set the appearance of this image, select it and then press the "Change Source" button. Use the file picker to select an image.</p>
+<img src="ogareditimageinterface.jpg" alt="An image of the OGAREdit image editing interface">
+<p>To create a basic gallery in OGAREdit, we just need images and a floorplan. We now have an image, so we just need to create a floorplan. Right click on 'Floorplan' in the left-hand tree menu, and press 'Create'. This new floorplan has a basic configuration, so we don't need to change it for this example.</p>
+<p>Now, we create a gallery. Right click on 'Gallery' in the left-hand tree menu and press 'Create'.</p>
+<p>Select the new Unnamed Gallery. The gallery editor should now appear in the right-hand side of the screen.</p>
+<img src="ogareditgalleryinterface.jpg" alt="An image of the OGAREdit gallery editing interface">
+<p>Press 'Set Floorplan', and use the resulting popup to select the floorplan we created previously (finalize your selection by pressing 'Select' in the popup).</p>
+<p>Next, mouse over the floorplan view in the gallery editor until a wall is highlighted as shown below. A wall should be red, with a small indicator facing towards the inside of the gallery. The indicator shows which side of the wall you are modifying, so we want to modify the side on the interior of the gallery. Then, click to select that wall.</p>
+<img src="ogareditselectwall.jpg" alt="An image of the OGAREdit gallery editor wall select feedback">
+<p>When you click on a wall, a "Wall Curator" popup will appear. This allows you to place artworks on this wall. Press "Add Artworks" in this popup.</p>
+<img src="ogareditwallcurator.jpg" alt="An image of the OGAREdit wall curation interface">
+<p>After you press "Add Artworks", select the image from earlier in the Image Selector popup. This image should appear on the wall. Close the Wall Curator popup.</p>
+<p>Finally, press "Project/OGAR Gallery Export" to export the selected gallery. You will have to choose a location to place the exported gallery. After a few seconds, the export will appear as a zip file beginning with "OEG" and ending with ".zip" in the selected directory.</p>
+</section>
+
+<section id="ogarcloudconcepts">
+<h2>5. OGARCloud Concepts</h2>
+<p><em>The full documentation for OGARCloud is available in the 'About' sections at the bottom of each page in OGARCloud.</em></p>
+<p>OGARCloud performs four functions:</p>
+<ol>
+<li>Allows researchers to upload and preview galleries exported from OGAREdit.</li>
+<li>Allows researchers to embed uploaded galleries in external webpages (or Qualtrics). OGARCloud will transmit resources such as images and audio to clients when they access these external webpages.</li>
+<li>Records user actions while interacting with the gallery on an external webpage.</li>
+<li>Allows researchers to download recorded user actions for analysis.</li>
+</ol>
+<p>The link to access OGARCloud, and an access key, should be provided by whoever set up OGARCloud for you. Once you log in, the OGARCloud interface is navigated via the sidebar.</p>
+<img src="ogarcloudsidebar.jpg" alt="An image of the OGARCloud sidebar">
+<p>From the top, "Galleries" allows you to preview or access embedding data from uploaded galleries.</p>
+<p>"Data Collection" allows you to download recorded participant data.</p>
+<p>"Upload" allows you to upload a new gallery created by OGAREdit.</p>
+<p>"Administration" allows you to change your access key.</p>
+<p>"Refresh" refreshes information about galleries and data. "Logout" ends your session.</p>
+</section>
+
+<section id="uploadgallery">
+<h2>6. Uploading a Gallery to OGARCloud</h2>
+<p>Uploading a gallery is straightforward. You should have a zip file created by OGAREdit and beginning with "OEG" on your computer (if you don't, see "Creating a Simple Gallery", above).</p>
+<p>Begin by navigating to the "Upload" page with the sidebar menu.</p>
+<img src="ogarcloudupload.jpg" alt="An image of the OGARCloud Upload Gallery interface">
+<p>Press "Choose File" and select the file beginning with "OEG" on your computer. Then, press "Upload".</p>
+<p>Once the upload succeeds, you should be able to see it as an entry in the "Galleries" page. On the "Galleries" page, you can press "Preview" to view your uploaded gallery.</p>
+</section>
+
+<section id="embedding">
+<h2>7. OGAR Embedding Considerations</h2>
+<p>The OGAR Client can be embedded in most webpages. To access JavaScript for a specific gallery, press "Download" under "Get Embeddable JS" in the OGARCloud Galleries page.</p>
+<h3>In Qualtrics</h3>
+<p>This JavaScript can be embedded in a couple of ways. It is currently the most seamless when embedded in a Qualtrics survey. You can use the <a href="https://www.qualtrics.com/support/survey-platform/survey-module/question-options/add-javascript/">Add JavaScript</a> option to include a gallery in a Qualtrics Text Question. When the JS Editor appears, replace everything in the JS Editor with the contents of the "Get Embeddable JS" result.</p>
+<p>In order to correlate OGAR data with Qualtrics Data, you should set the Qualtrics <a href="https://www.qualtrics.com/support/survey-platform/survey-module/survey-flow/standard-elements/embedded-data/">Embedded Data</a> key "Cust_UniqueID" to "None" before the question including the OGAR JavaScript. The OGAR Client will record its identifier in the "Cust_UniqueID" Embedded Data, if it exists, allowing you to correlate a Qualtrics User with an OGAR User.</p>
+<h3>In HTML</h3>
+<p>In its most basic form, however, you can include the Embeddable JS in a webpage inside of a pair of <code>&lt;script&gt;&lt;/script&gt;</code> tags. You should take special care to call <code>OGARgallery.recep.cleanup()</code> when the user navigates away from the page.</p>
+</p>
+</section>
+<section id="dataprocessing">
+<h2>8. Processing Data from OGARCloud</h2>
+<p>Once OGARCloud has collected data you want to process, wait 10 minutes. Then, navigate to the "Data Collection" page of OGARCloud and press "Regenerate Data Exports". Wait for 15 minutes, then refresh the page.</p>
+<p>At this point, the subheader "Manage Collected Data" should have a dropdown menu including the name of the gallery you collected data for. Select it, then press "Download Gallery Data".</p>
+<p>Next, download the tool from the link at the bottom of the "Manage Collected Data" section. You don't need to redownload this tool everytime you process data.</p>
+<img src="ogarclouddatacollection.jpg" alt="An image of the Data Collection page of OGARCloud">
+<p>Finally, navigate to the "Gallery" page of OGARCloud, and download the "gallery.json" under the "Get Gallery Definition" column for the gallery whose data you downloaded.</p>
+<p>Now, you have a data .zip file, the tool in ogarcloud_process.zip, and a gallery.json. Unzip ogarcloud_process.zip, and run the included "process.py". You should see this interface:</p>
+<img src="ogarcloudprocess.jpg" alt="An image of the OGARCloud_process tool interface">
+<p>Select your data export (the zip) and gallery definition (gallery.json), and press 'Process'. This will result in a zip file including CSVs of OGAR user data. Analyze this data in the context of your study. Note that README.txt in ogarcloud_process.zip includes some information about interpretting the resulting CSVs.</p>
+</section>
+</body>
+</html>

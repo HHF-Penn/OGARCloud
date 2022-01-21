@@ -18,6 +18,7 @@ def saveState(s):
 
 # Create Lambda Roles
 roles = None
+
 if "roles" in state:
 	roles = state['roles']
 	print("loaded lambda roles")
@@ -93,12 +94,11 @@ else:
 	print('Created EFS')
 	state['fsRet'] = fsRet
 	saveState(state)
-	time.sleep(10)
+	print('EFS prov. takes a long time. waiting 90 sec. FIXME poll')
+	time.sleep(90)
 fs = fsRet['fs']
 fsAParn = fsRet['AParn']
 
-print('EFS prov. takes a long time. waiting 90 sec. FIXME poll')
-time.sleep(90)
 
 # Create Lambdas
 lambdas = None

@@ -23,6 +23,8 @@ Copy `cred.json.template` to `cred.json.secret` and fill in the KEY\_ID and ACCE
 
 Run `python3 deploy.py` (Read the comments in `deploy.py` for more information)
 
+Take note of the management URL (ends with "manage.html") and the access key (some random string) in the output. These are needed to access OGARCloud.
+
 If you run into issues, delete the created `state.pickle` file to start a new deployment from scratch.
 
 ## Architecture Description
