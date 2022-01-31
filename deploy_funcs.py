@@ -50,7 +50,7 @@ def getDeployment():
 	return "{:05d}".format(DEPLOYMENT)
 
 def getBucketName():
-	return "ogarcloud-{}".format(getDeployment())
+	return "ogarcloud{}".format(getDeployment())
 
 def createLambdaRoles():
 	sess = getSession()
@@ -69,7 +69,7 @@ def createLambdaRoles():
 				}
 			]
 		}),
-		'Path':'/ogarcloud-{}/'.format(deploy)
+		'Path':'/ogarcloud{}/'.format(deploy)
 	}
 	res['contentAdm'] = iam.create_role(**common, RoleName='oc-contentAdm-{}'.format(deploy), Description='Used to manage available gallery definitions and export recorded data.')
 	time.sleep(1)
@@ -145,7 +145,7 @@ def createGateway(lambdas):
 			'AllowHeaders': ['*']
 		},
 		Description = 'Gateway used by all OGARCloud Lambdas',
-		Name = 'ogarcloud-{}'.format(deploy),
+		Name = 'ogarcloud{}'.format(deploy),
 		ProtocolType = 'HTTP',
 		Tags = {'ogarDeployment':deploy}
 	)
@@ -227,7 +227,7 @@ def createBucket(roles):
 	s3 = sess.resource('s3')
 	bName = getBucketName()
 	bArn = 'arn:aws:s3:::{}'.format(bName)
-	s3.create_bucket(Bucket=bName, ACL='private', CreateBucketConfiguration={'LocationConstraint': region})
+	s3.create_bucket(Bucket=bName, ACL='private')
 	# Bucket policy
 	time.sleep(1)
 	b = s3.Bucket(bName)
