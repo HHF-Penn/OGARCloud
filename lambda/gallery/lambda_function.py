@@ -15,7 +15,6 @@ import sqlite3
 import string
 import base64
 
-UPLOADMAX = 200 #mb
 EFSMNT = '/mnt/collect'
 MIME = {
 	'csv':'text/csv','html':'text/html','svg':'image/svg+xml',
@@ -80,9 +79,8 @@ def change_accesskey():
 	}
 
 def presign_upload(filename, bucket):
-	global UPLOADMAX
-	s3_client = boto3.client('s3')
-	presigned = s3_client.generate_presigned_url('put_object', Params={'Bucket':bucket, 'Key':'zip/'+filename, 'ContentType':'application/zip'}, ExpiresIn=1800, HttpMethod="PUT")
+	s3_client = boto3.client('s3')#, region_name='us-east-1')
+	presigned = s3_client.generate_presigned_post(Bucket=bucket, Key='zip/'+filename, ExpiresIn=1800)
 	return {
 		'statusCode': 200,
 		'body': json.dumps({"upload":presigned})

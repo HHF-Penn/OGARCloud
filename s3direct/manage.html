@@ -289,16 +289,21 @@ async function uploadSubmit(){
 		console.warn(e);
 		return;
 	}
+	console.log(credResponse['upload']);
 	uploadStatusLabel.innerText = "Uploading file...";
 	await sleep(3000); //superstitious to give upload max chance of success
 	let uploadRes = null;
+	let formData = new FormData();
+	for(let field in credResponse['upload']['fields']){
+		formData.append(field, credResponse['upload']['fields'][field]);
+	}
+	formData.append('file', new Blob([zipFile], {type: 'application/zip'}));
+	console.log(formData);
 	for(var tries = 1; tries <= 3; tries++){
 		try{
-			uploadRes = await fetch(credResponse['upload'], {
-				"method": "PUT",
-				"cache": "no-cache",
-				"headers": {'Content-Type': 'application/zip'},
-				body: new Blob([zipFile], {type: 'application/zip'})
+			uploadRes = await fetch(credResponse['upload']['url'], {
+				method: "POST",
+				body: formData
 			});
 			break;
 		}catch(error){
