@@ -143,7 +143,12 @@ if(isQual){
 }else{
 	var temp = function(){return ('0000'+Math.floor(Math.random()*10000)).slice(-4);};
 	QID = "TEST_"+temp()+temp()+temp();
-	document.body.appendChild(fsDiv);
+	// determine where to place thumbnail gallery preview
+	var ogarPlacementDOMTarget = document.getElementById("ogargalleryembedcontainer");
+	if(ogarPlacementDOMTarget === null){
+		ogarPlacementDOMTarget = document.body;
+	}
+	ogarPlacementDOMTarget.appendChild(fsDiv);
 }
 var ctx = overlayCanv.getContext('2d');
 ctx.textAlign = "center";

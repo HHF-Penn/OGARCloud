@@ -85,7 +85,15 @@
 <section id="galleries">
 <h2>Galleries</h2>
 <table id="galleryTable">
-<tr><th>Gallery Name</th><th>Preview Gallery</th><th>Get Gallery Definition</th><th>Get Embeddable JS</th><th>Delete</th></tr>
+<tr>
+	<th>Gallery Name</th>
+	<th>Preview Gallery</th>
+	<th>Get Gallery Definition</th>
+	<th>Get Embeddable JS</th>
+	<th>Get HTML Embed (preview)</th>
+	<th>Get HTML Embed (data collection)</th>
+	<th>Delete</th>
+</tr>
 </table>
 <details class="help">
 <summary>About</summary>
@@ -93,6 +101,7 @@
 <p>Click "Preview" to view the gallery without recording any data.</p>
 <p>Use "Get Gallery Definition" to download the "gallery.json" for a gallery. This is used for analyzing data</p>
 <p>Use "Get Embeddable JS" to view the JavaScript configuration for a gallery. The text you are presented with can be embedded into a webpage or directly copied into a Qualtrics Text Question Embedded JavaScript. If you are using Qualtrics, you should totally replace any prepopulated JavaScript which Qualtrics provides.</p>
+<p>Use "Get HTML Embed" to view an embeddable HTML object for a gallery. "Preview" variant will not collect data, while "data collection" variant will.</p>
 <p>Click "Delete" to permanently delete the gallery from OGARCloud. Any ongoing usage of the gallery will be broken.</p>
 </details>
 </section>
@@ -350,17 +359,32 @@ function deleteGallery(gName, confirmed){
 		refresh();
 	});
 }
-function getJSClient(bucket, gallery, endpoint){
-	fetch("ogar.js", {cache:'no-cache'})
+// Used by various embed options. This is a templatised JS file.
+function getOgarJS(bucket, gallery, endpoint, collect){
+	return fetch("ogar.js", {cache:'no-cache'})
 		.then(r => r.text())
 		.then(function(t){
-			t = t.replaceAll("\"\"/*@@ReceptorAddr@@*/",'"'+endpoint+'receive"');
 			t = t.replaceAll("\"\"/*@@GalleryPathOverride@@*/",'"uploads/'+gallery+'/gallery.json"');
 			t = t.replaceAll('""/*@@GalleryDataRoot@@*/','"'+bucket+'"');
 			t = t.replaceAll('""/*@@GalleryID@@*/', '"'+gallery+'"');
-			let oblob = new Blob([t], {type:"text/javascript"});
-			window.open(URL.createObjectURL(oblob), '_blank');
-		});
+			if(collect){
+				t = t.replaceAll("\"\"/*@@ReceptorAddr@@*/",'"'+endpoint+'receive"');
+			}
+			return t;
+		})
+}
+function getJSClient(bucket, gallery, endpoint){
+	getOgarJS(bucket, gallery, endpoint, true).then(function(t){
+		let oblob = new Blob([t], {type:"text/javascript"});
+		window.open(URL.createObjectURL(oblob), '_blank');
+	});
+}
+function getHTMLEmbed(bucket, gallery, endpoint, collect){
+	getOgarJS(bucket, gallery, endpoint, collect).then(function(t){
+		t = '<div id="ogargalleryembedcontainer"></div><script>\n' + t + '\n<\/script>'
+		let oblob = new Blob([t], {type:"text/plain"}); // Text/plain instead of text/html because we want to show the source, not attempt to render it.
+		window.open(URL.createObjectURL(oblob), '_blank');
+	});
 }
 async function refresh(){
 	requestBody["operation"] = "list_galleries";
@@ -376,6 +400,8 @@ async function refresh(){
 		let c_preview = document.createElement("td");
 		let c_galJson = document.createElement("td");
 		let c_download = document.createElement("td");
+		let c_htmlEmbedPreview = document.createElement("td");
+		let c_htmlEmbedCollect = document.createElement("td");
 		let c_delete = document.createElement("td");
 		c_name.innerText = g;
 		let galleryPreviewPath = "gallery.html?GalleryPathOverride=uploads/"+g+"/gallery.json";
@@ -384,8 +410,18 @@ async function refresh(){
 		let bt_qualJS = document.createElement("button");
 		bt_qualJS.type = "button";
 		bt_qualJS.onclick = function(){getJSClient(bucket, g, endpoint)};
-		bt_qualJS.innerText = "Download";
+		bt_qualJS.innerText = "View";
 		c_download.appendChild(bt_qualJS);
+		let bt_htmlEmbedPreview = document.createElement("button");
+		bt_htmlEmbedPreview.type = "button";
+		bt_htmlEmbedPreview.onclick = function(){getHTMLEmbed(bucket, g, endpoint, false)};
+		bt_htmlEmbedPreview.innerText = "View";
+		c_htmlEmbedPreview.appendChild(bt_htmlEmbedPreview);
+		let bt_htmlEmbedCollect = document.createElement("button");
+		bt_htmlEmbedCollect.type = "button";
+		bt_htmlEmbedCollect.onclick = function(){getHTMLEmbed(bucket, g, endpoint, true)};
+		bt_htmlEmbedCollect.innerText = "View";
+		c_htmlEmbedCollect.appendChild(bt_htmlEmbedCollect);
 		let bt_delete = document.createElement("button");
 		bt_delete.type = "button";
 		bt_delete.onclick = function(){deleteGallery(g, false)};
@@ -395,6 +431,8 @@ async function refresh(){
 		newRow.appendChild(c_preview);
 		newRow.appendChild(c_galJson);
 		newRow.appendChild(c_download);
+		newRow.appendChild(c_htmlEmbedPreview);
+		newRow.appendChild(c_htmlEmbedCollect);
 		newRow.appendChild(c_delete);
 		gTable.appendChild(newRow);
 	});
