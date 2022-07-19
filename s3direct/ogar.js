@@ -375,6 +375,9 @@ function dot(a, b){
 	}
 	return res;
 }
+function scale(v, s){
+	return v.map(i => i*s);
+}
 function norm(v){
 	let len = Math.hypot.apply(null, v);
 	if(len == 0.0){
@@ -473,6 +476,20 @@ class Mat4{
 			vec[i] = res[i];
 		}
 	}
+	mult3Vec(vec){
+		const res = Mat4.tempVec;
+		var m1 = this.arr;
+		for(var y = 0; y < 4; y++){
+			var v = 0.0;
+			for(var i = 0; i < 3; i++){
+				v += m1[y+4*i] * vec[i];
+			}
+			res[y] = v;
+		}
+		for(var i = 0; i < 3; i++){
+			vec[i] = res[i];
+		}
+	}
 	// Multiplies a matrix by another, and saves the result in _this_
 	mult2(mat1, mat2){
 		var res = this.arr;
@@ -546,6 +563,35 @@ class Mat4{
 		// --------------------
 		this.arr[3] = this.arr[7] = this.arr[11] = this.arr[12] = this.arr[13] = this.arr[14] = 0.0;
 		this.arr[15] = 1.0;
+	}
+	// From gluInvertMatrix
+	invert(){
+		var inv = Mat4.tempMat;
+		var m = this.arr;
+		var det;
+		inv[0] = m[5]  * m[10] * m[15] - m[5]  * m[11] * m[14] - m[9]  * m[6]  * m[15] + m[9]  * m[7]  * m[14] +m[13] * m[6]  * m[11] - m[13] * m[7]  * m[10];
+		inv[4] = -m[4]  * m[10] * m[15] + m[4]  * m[11] * m[14] + m[8]  * m[6]  * m[15] - m[8]  * m[7]  * m[14] - m[12] * m[6]  * m[11] + m[12] * m[7]  * m[10];
+		inv[8] = m[4]  * m[9] * m[15] - m[4]  * m[11] * m[13] - m[8]  * m[5] * m[15] + m[8]  * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+		inv[12] = -m[4]  * m[9] * m[14] + m[4]  * m[10] * m[13] +m[8]  * m[5] * m[14] - m[8]  * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+		inv[1] = -m[1]  * m[10] * m[15] + m[1]  * m[11] * m[14] + m[9]  * m[2] * m[15] - m[9]  * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+		inv[5] = m[0]  * m[10] * m[15] - m[0]  * m[11] * m[14] - m[8]  * m[2] * m[15] + m[8]  * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+		inv[9] = -m[0]  * m[9] * m[15] + m[0]  * m[11] * m[13] + m[8]  * m[1] * m[15] - m[8]  * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+		inv[13] = m[0]  * m[9] * m[14] - m[0]  * m[10] * m[13] - m[8]  * m[1] * m[14] + m[8]  * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+		inv[2] = m[1]  * m[6] * m[15] - m[1]  * m[7] * m[14] - m[5]  * m[2] * m[15] + m[5]  * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+		inv[6] = -m[0]  * m[6] * m[15] + m[0]  * m[7] * m[14] + m[4]  * m[2] * m[15] - m[4]  * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+		inv[10] = m[0]  * m[5] * m[15] - m[0]  * m[7] * m[13] - m[4]  * m[1] * m[15] + m[4]  * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+		inv[14] = -m[0]  * m[5] * m[14] + m[0]  * m[6] * m[13] + m[4]  * m[1] * m[14] - m[4]  * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+		inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+		inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+		inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+		inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+		det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+		if (det == 0)
+			return false;
+		det = 1.0 / det;
+		for(var i = 0; i < 16; i++)
+			m[i] = inv[i] * det;
+		return true;
 	}
 	static zRot(r){
 		var s = Math.sin(r);
@@ -822,9 +868,9 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		gl.clearColor(0,0.5,0.5,1);
 		this.loadTex(images);
 		E.evt("Finished preparing textures");
+		this.getArtTriangles(j["artPlacement"]); //add the triangles for the art. This function also adds the arts texture coordinates
 		this.createGLWalls();
 		E.evt("Finished creating wall triangles");
-		this.getArtTriangles(j["artPlacement"]); //add the triangles for the art. This function also adds the arts texture coordinates
 		Object.values(this.artDef).forEach( d => {
 			d.normals = this.calculateNormals(d.points);
 		});
@@ -843,7 +889,7 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		this.pVel = [0,0];
 		this.pv = j["patron"]["dir"]/180*Math.PI;
 		this.pvVert = 0.0;//straight forward (up/down view angle)
-		var me = this;//for lambdas
+		const me = this;//for lambdas
 
 		function mousemovefunc(e){
 			if(me.state["name"] == "S_NAV"){
@@ -1048,6 +1094,10 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		});
 	}
 	getArtTriangles(artInst){//This takes the 'artPlacement' element
+		var matteVNA = [];
+		var matteTCA = [];
+		const artorient = new Mat4();
+		const artStandoff = 0.01;
 		artInst.forEach(function (a){
 			var aDef = this.artDef[a["art"]];
 			// Record our text information
@@ -1069,10 +1119,28 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 				a["size"] = a["size"].map(x => x*a["scale"]);
 			}
 			var c = Array.from(a["loc"]);
-			var relLeft = [0, -a["size"][0]/2];
-			relLeft = rotate(relLeft, a["dir"]/180*Math.PI);
+			const frontVec = rotate([1, 0], a['dir']/180*Math.PI).concat([0]);
+			const upVec = [0,0,1];
+			var leftVec = [0,1,0];
+			cross(leftVec, frontVec, upVec);
+			artorient.arr[1] = leftVec[0];
+			artorient.arr[5] = leftVec[1];
+			artorient.arr[9] = leftVec[2];
+			// --------------------
+			artorient.arr[2] = upVec[0];
+			artorient.arr[6] = upVec[1];
+			artorient.arr[10] = upVec[2];
+			// --------------------
+			artorient.arr[0] = frontVec[0];
+			artorient.arr[4] = frontVec[1];
+			artorient.arr[8] = frontVec[2];
+			// --------------------
+			artorient.arr[3] = artorient.arr[7] = artorient.arr[11] = artorient.arr[12] = artorient.arr[13] = artorient.arr[14] = 0.0;
+			artorient.arr[15] = 1.0;
+			//
+			const relLeft = scale(leftVec, a["size"][0]/2);
 			// This exists to offset art 1cm from the wall
-			var offset = rotate([0.01,0], a['dir']/180*Math.PI);
+			const offset = scale(frontVec, artStandoff);
 			c[0] += offset[0];
 			c[1] += offset[1];
 			var left = [c[0]+relLeft[0], c[1]+relLeft[1]];
@@ -1089,7 +1157,104 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 			aDef.points = aDef.points.concat(p1,p2,p3,p4,p3,p2);
 			aDef.texCoord = aDef.texCoord.concat([0,1,1,1,0,0,1,0,0,0,1,1]);//FIXME
 			aDef.instanceCount += 1;
+
+			if(Object.keys(a).includes('matte')){
+				var standoffAcc = artStandoff;
+				const mattedef = this.j['matte'][a['matte']];
+				var np1, np2, np3, np4; // The 'new' variants are the outer points of each matte. The matte expands outwards and forwards with each layer
+				if(Object.keys(mattedef).includes('layers')){
+					for(var lidx = 0; lidx < mattedef['layers'].length; lidx++){
+						const l = mattedef['layers'][lidx];
+						var bevelAngle = 900;
+						var standoff = 0;
+						var mwidth = 0;
+						var mheight = 0;
+						var lc = this.getColorUV(l['color']);
+						const lkeys = Object.keys(l);
+						if(lkeys.includes('bevel')){
+							bevelAngle = l['bevel'];
+						}
+						if(lkeys.includes('standoff')){
+							standoff = l['standoff']*0.001;
+						}
+						if(lkeys.includes('width')){
+							mwidth = l['width']*0.001;
+						}
+						if(lkeys.includes('height')){
+							mheight = l['height']*0.001;
+						}
+						if(standoff != 0 && (mwidth != 0 || mheight != 0)){
+							var minDistForBevel = 0;
+							if(bevelAngle != 900){
+								minDistForBevel = standoff/Math.tan(Math.PI*bevelAngle/1800);
+							}
+							if(mwidth > minDistForBevel || mheight > minDistForBevel){
+								// We need 'min' here, because either width or height could still be less than the minbeveldist.
+								var bevelWidth = Math.min(minDistForBevel, mwidth);
+								var bevelHeight = Math.min(minDistForBevel, mheight);
+								mwidth -= bevelWidth;
+								mheight -= bevelHeight;
+								standoffAcc += standoff;
+								var bo = [standoff, bevelWidth, -bevelHeight];
+								artorient.mult3Vec(bo);
+								np1 = [p1[0]+bo[0], p1[1]+bo[1], p1[2]+bo[2]];//bottom left
+								bo = [standoff, -bevelWidth, -bevelHeight];
+								artorient.mult3Vec(bo);
+								np2 = [p2[0]+bo[0], p2[1]+bo[1], p2[2]+bo[2]];
+								bo = [standoff, bevelWidth, bevelHeight];
+								artorient.mult3Vec(bo);
+								np3 = [p3[0]+bo[0], p3[1]+bo[1], p3[2]+bo[2]];
+								bo = [standoff, -bevelWidth, bevelHeight];
+								artorient.mult3Vec(bo);
+								np4 = [p4[0]+bo[0], p4[1]+bo[1], p4[2]+bo[2]];
+								matteVNA = matteVNA.concat(np1,p1,p3,np1,p3,np3,np1,np2,p2,np1,p2,p1,np4,np3,p3,np4,p3,p4,np4,p4,p2,np4,p2,np2);
+								matteTCA = matteTCA.concat(lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc);
+								standoff = 0;
+								p1 = np1;
+								p2 = np2;
+								p3 = np3;
+								p4 = np4;
+							}
+						}
+						var bo = [standoff, mwidth, -mheight];
+						standoffAcc += standoff;
+						artorient.mult3Vec(bo);
+						np1 = [p1[0]+bo[0], p1[1]+bo[1], p1[2]+bo[2]];//bottom left
+						bo = [standoff, -mwidth, -mheight];
+						artorient.mult3Vec(bo);
+						np2 = [p2[0]+bo[0], p2[1]+bo[1], p2[2]+bo[2]];
+						bo = [standoff, mwidth, mheight];
+						artorient.mult3Vec(bo);
+						np3 = [p3[0]+bo[0], p3[1]+bo[1], p3[2]+bo[2]];
+						bo = [standoff, -mwidth, mheight];
+						artorient.mult3Vec(bo);
+						np4 = [p4[0]+bo[0], p4[1]+bo[1], p4[2]+bo[2]];
+						matteVNA = matteVNA.concat(np1,p1,p3,np1,p3,np3,np1,np2,p2,np1,p2,p1,np4,np3,p3,np4,p3,p4,np4,p4,p2,np4,p2,np2);
+						matteTCA = matteTCA.concat(lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc,lc);
+						p1 = np1;
+						p2 = np2;
+						p3 = np3;
+						p4 = np4;
+					}
+				}
+				var bo = [-standoffAcc, 0, 0];
+				const ec = this.getColorUV(mattedef['edgeColor']); // Edge Color
+				artorient.mult3Vec(bo);
+				np1 = [p1[0]+bo[0], p1[1]+bo[1], p1[2]+bo[2]];
+				np2 = [p2[0]+bo[0], p2[1]+bo[1], p2[2]+bo[2]];
+				np3 = [p3[0]+bo[0], p3[1]+bo[1], p3[2]+bo[2]];
+				np4 = [p4[0]+bo[0], p4[1]+bo[1], p4[2]+bo[2]];
+				matteVNA = matteVNA.concat(np1,p1,p3,np1,p3,np3,np1,np2,p2,np1,p2,p1,np4,np3,p3,np4,p3,p4,np4,p4,p2,np4,p2,np2);
+				matteTCA = matteTCA.concat(ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec,ec);
+			}
 		}.bind(this));
+		this.matteVNA = matteVNA;
+		this.matteTCA = matteTCA;
+		this.quadCount += matteVNA.length/18;
+	}
+	getColorUV(colorIdx){
+		const tex = this.images["__tex"];
+		return [(0.5+(colorIdx%tex.width))/tex.width , (0.5+((colorIdx/tex.width)|0))/tex.height];
 	}
 	loadTex(images){
 		var texStagingCanvas = document.createElement("canvas");
@@ -1157,6 +1322,10 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		// Ceiling
 		vna.set([b[0], b[1], wallH, b[0], b[3], wallH, b[2], b[1], wallH, b[2], b[1], wallH, b[0], b[3], wallH, b[2], b[3], wallH], qidx);
 		qidx+=18;
+		vna.set(this.matteVNA, qidx);
+		vna.set(this.calculateNormals(this.matteVNA), qidx+18*quadCount);
+		
+		qidx+=this.matteVNA.length;
 		for(var idx = 0; idx < w.length; idx+=4){
 			var normal = norm([-(w[idx+1]-w[idx+3]), w[idx]-w[idx+2], 0]);
 			for(var nIdx = 0; nIdx < 6; nIdx++){
@@ -1174,9 +1343,9 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 			vna.set(pt1, qidx+15);
 			qidx += 18;
 		}
-		const floorTex = [3/8, 0.5];
-		const ceilingTex = [5/8, 0.5]
-		const wallTex = [1/8, 0.5];
+		const floorTex = this.getColorUV(1);
+		const ceilingTex = this.getColorUV(2);
+		const wallTex = this.getColorUV(0);
 		var tidx = 0;
 		for(var idx = 0; idx < 6; idx++){
 			tca.set(floorTex, tidx);
@@ -1186,7 +1355,9 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 			tca.set(ceilingTex, tidx);
 			tidx+=2;
 		}
-		for(var idx = 0; idx < 6*(quadCount-2); idx++){
+		tca.set(this.matteTCA, tidx);
+		tidx+=this.matteTCA.length;
+		for(var idx = 0; idx < 6*(this.wallCount); idx++){
 			tca.set(wallTex, tidx);
 			tidx+=2;
 		}
@@ -1232,7 +1403,6 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		const sinpvvert = Math.sin(this.pvVert);
 		const viewVec = [cospv*cospvvert, sinpv*cospvvert, sinpvvert];
 		this.cam_rot.glhLookAtf2(viewVec, [-cospv*sinpvvert, -sinpv*sinpvvert, cospvvert]);
-//		this.cam_rot.glhLookAtf2([cospv*cospvvert, sinpv*cospvvert, sinpvvert], [0,0,1]);
 		this.cam_trs.setTo(Mat4.translate(-this.pl[0], -this.pl[1], -this.pl[2]));
 		gl.uniformMatrix4fv(this.u_cam_rot, false, this.cam_rot.arr);
 		gl.uniformMatrix4fv(this.u_cam_trs, false, this.cam_trs.arr);
