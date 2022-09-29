@@ -15,6 +15,7 @@ files = [
 'gl/world.frag',
 'gl/world.vert',
 'res/audio.svg',
+'res/50x50noise.png',
 'res/left-click.svg',
 'res/pause.svg',
 'res/play.svg',

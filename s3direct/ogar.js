@@ -27,8 +27,10 @@ var GalleryOpts = {
 	"BaseHeight":450,
 	"FullWidth":1600,
 	"FullHeight":900,
-	"FragShader":"gl/world.frag",
-	"VertShader":"gl/world.vert",
+	"StdFragShader":"gl/world.frag",
+	"StdVertShader":"gl/world.vert",
+	"DetailFragShader":"gl/world_detail.frag",
+	"DetailVertShader":"gl/world_detail.vert",
 	"ResourceDir":"res/",
 	"ArtSolidColor":false,
 	"ReceptorAddr":""/*@@ReceptorAddr@@*/,
@@ -151,16 +153,27 @@ if(isQual){
 	ogarPlacementDOMTarget.appendChild(fsDiv);
 }
 var ctx = overlayCanv.getContext('2d');
-ctx.textAlign = "center";
+ctx.textAlign = "right";
 ctx.textBaseline = "middle";
-ctx.font = "40px sans-serif";
-function drawLoading(msg){
+ctx.font = ""+overlayCanv.height/25+"px sans-serif";
+
+function drawLoading(frac, msg){
+	let width = overlayCanv.width;
+	let height = overlayCanv.height;
 	ctx.fillStyle = "#88A0C0";//slate grey background
 	ctx.fillRect(0,0,overlayCanv.width,overlayCanv.height);
+	//Draw Loading Bar
 	ctx.fillStyle = "#000000";
-	ctx.fillText(msg, overlayCanv.width/2, overlayCanv.height/2);
+	ctx.fillRect(width*0.25-5, height*0.475-5, width*0.5+10, height*0.05+10);
+	ctx.transform(width*0.5,0,0,height*0.05,width*0.25,height*0.475);
+	ctx.fillStyle = "#88A0C0";
+	ctx.fillRect(frac,0,1-frac,1);
+	//Draw Message
+	ctx.resetTransform();
+	ctx.fillStyle = "#ffffff";
+	ctx.fillText(msg, overlayCanv.width*3/4, overlayCanv.height/2);
 }
-drawLoading("Loading...");
+drawLoading(0, "...");
 console.log("QID: ",QID);
 
 
@@ -170,12 +183,13 @@ class MessageReportBundler{
 	constructor(addr, id, galleryid, sec){
 		this.addr = addr;
 		this.id = id;
+		this.galleryid = galleryid;
 		this.cleanedup = false;
 		this.evt_ = {};
 		this.perf_ = {};
 		this.pos_ = {};
 		this.reset();
-		this.introduce(galleryid);
+		this.introduce();
 		this.interval = setInterval(this.send.bind(this), sec*1000);
 	}
 	reset(){
@@ -193,11 +207,12 @@ class MessageReportBundler{
 		this.pos_['pitch'] = [];
 		this.pos_['yaw'] = [];
 	}
-	introduce(galleryid){
+	introduce(){
 		const msg = {
 			"id":this.id,
 			"tOrigin":this.tOrigin,
-			"gallery":galleryid
+			"gallery":this.galleryid,
+			"register":true
 		};
 		this.sendmsg(msg);
 	}
@@ -213,6 +228,7 @@ class MessageReportBundler{
 			msg['evt'] = this.evt_;
 		}
 		msg['tOrigin'] = this.tOrigin;
+		msg['gallery'] = this.galleryid;
 		msg['id'] = this.id;
 		this.sendmsg(msg);
 		this.reset();
@@ -793,6 +809,41 @@ class Keyboard{
 		return norm(rotate(v, viewAngle));
 	}
 }
+class WGLProg{
+	constructor(gl, vertex, fragment, uniformNames, attrNames){
+		this.gl = gl;
+		const ver = gl.createShader(gl.VERTEX_SHADER);
+		this.ver = ver;
+		const frag = gl.createShader(gl.FRAGMENT_SHADER);
+		this.frag = frag;
+		gl.shaderSource(ver, vertex);
+		gl.shaderSource(frag, fragment);
+		gl.compileShader(ver);
+		gl.compileShader(frag);
+		const prog = gl.createProgram();
+		this.prog = prog;
+		gl.attachShader(prog, ver);
+		gl.attachShader(prog, frag);
+		gl.linkProgram(prog);
+		gl.useProgram(prog);
+		this.i = {};
+		for(const u of uniformNames){
+			this.i[u] = gl.getUniformLocation(prog, u);
+		}
+		for(const a of attrNames){
+			this.i[a] = gl.getAttribLocation(prog, a);
+			gl.enableVertexAttribArray(this.i[a]);
+		}
+	}
+	inError(){
+		const gl = this.gl;
+		return !(gl.getShaderParameter(this.ver, gl.COMPILE_STATUS) && gl.getShaderParameter(this.frag, gl.COMPILE_STATUS) && gl.getProgramParameter(this.prog, gl.LINK_STATUS));
+	}
+	getInfoLog(){
+		const gl = this.gl;
+		return 'Vert:"'+gl.getShaderInfoLog(this.ver)+'",Frag:"'+gl.getShaderInfoLog(this.frag)+'",Program:"'+gl.getProgramInfoLog(this.prog)+'"';
+	}
+}
 class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 	constructor(galleryDiv, j, images, audios, recep, qid){
 		E.e("Test Error");
@@ -841,9 +892,9 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		this.getArtDefinitions(j["art"]);
 		this.overlay = this.overlayCanvas.getContext("2d");
 		const glHints = {
-			alpha: false,
+			alpha: true, //Avoid alpha:false, which can be expensive (From MDN best practices)
 			stencil: false,
-			antialias: false,
+			antialias: true,
 		//	desynchronized: true,
 		}
 		var gl = this.glCanvas.getContext("webgl2", glHints);
@@ -932,22 +983,19 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		galleryDiv.onclick = function(){
 			me.stateEvent("CLICK");
 		};
-
-		var program;
-		program = this.createProgram(vertShader, fragShader);
-		this.program = program;
-		gl.linkProgram(program);
-		if(!gl.getProgramParameter(program, gl.LINK_STATUS)){
-			E.e("Program link error: "+gl.getProgramInfoLog(program));
+		this.glDetailProg = new WGLProg(gl, ogarShaders['detailvert'], ogarShaders['detailfrag'], ["u_cam_rot","u_cam_trs","u_cam_lens","u_noise","u_texture"], ['a_position','a_normal','a_texcoord']);
+		if(this.glDetailProg.inError()){
+			E.e(this.glDetailProg.getInfoLog());
 		}
-		gl.useProgram(program);
+		gl.uniformMatrix4fv(this.glDetailProg.i['u_cam_lens'], false, this.cam_lens.arr);
+		this.glStdProg = new WGLProg(gl, ogarShaders['stdvert'], ogarShaders['stdfrag'], ["u_cam_rot","u_cam_trs","u_cam_lens","u_texture"], ['a_position','a_normal','a_texcoord']);
+		if(this.glStdProg.inError()){
+			E.e(this.glStdProg.getInfoLog());
+		}
+		gl.uniformMatrix4fv(this.glStdProg.i['u_cam_lens'], false, this.cam_lens.arr);
 		E.evt("Finished initializing gl program");
 		this.addData();
 		E.evt("Finished binding gl data buffers");
-		this.u_cam_rot = gl.getUniformLocation(program, "u_cam_rot");
-		this.u_cam_trs = gl.getUniformLocation(program, "u_cam_trs");
-		this.u_cam_lens = gl.getUniformLocation(program, "u_cam_lens");
-		gl.uniformMatrix4fv(this.u_cam_lens, false, this.cam_lens.arr);
 		this.perfcount_draw = 0;
 		this.perftime_draw = 0;
 		this.perfcount_iter = 0;
@@ -1263,6 +1311,10 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		gl.bindTexture(gl.TEXTURE_2D, this.gltexture);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+		this.glnoise = this.createTextureFromImage(images["__noise"],texStagingCanvas);
+		gl.bindTexture(gl.TEXTURE_2D, this.glnoise);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
 
 		Object.keys(this.artDef).forEach( function(k, kidx){
 			var d = this.artDef[k];
@@ -1270,6 +1322,8 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 			gl.bindTexture(gl.TEXTURE_2D, d.gltexture);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); //This is for things like windows with very small textures.
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR); //This is for paintings where we only see a small portion of their real resolution
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		}.bind(this));
 	}
 	processWalls(){
@@ -1379,13 +1433,11 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 				a[d] = pts[i+d] - pts[i+d+3];
 				b[d] = pts[i+d+3] - pts[i+d+6];
 			}
-			var n1 = (a[1]*b[2] - a[2]*b[1]); 
-			var n2 = (a[2]*b[0] - a[0]*b[2]); 
-			var n3 = (a[0]*b[1] - a[1]*b[0]);
+			var n = norm([a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]]);
 			for(var redo = 0; redo < 3; redo++){
-				normals.push(n1);
-				normals.push(n2);
-				normals.push(n3);
+				normals.push(n[0]);
+				normals.push(n[1]);
+				normals.push(n[2]);
 			}
 		}
 		return normals;
@@ -1404,25 +1456,43 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 		const viewVec = [cospv*cospvvert, sinpv*cospvvert, sinpvvert];
 		this.cam_rot.glhLookAtf2(viewVec, [-cospv*sinpvvert, -sinpv*sinpvvert, cospvvert]);
 		this.cam_trs.setTo(Mat4.translate(-this.pl[0], -this.pl[1], -this.pl[2]));
-		gl.uniformMatrix4fv(this.u_cam_rot, false, this.cam_rot.arr);
-		gl.uniformMatrix4fv(this.u_cam_trs, false, this.cam_trs.arr);
-		this.gl.clear(this.gl.DEPTH_BUFFER_BIT | this.gl.COLOR_BUFFER_BIT);
-
+		gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
+		var glp = this.glDetailProg;
+		gl.useProgram(glp.prog);
+		gl.uniformMatrix4fv(glp.i['u_cam_rot'], false, this.cam_rot.arr);
+		gl.uniformMatrix4fv(glp.i['u_cam_trs'], false, this.cam_trs.arr);
+		gl.activeTexture(gl.TEXTURE1);
+		gl.bindTexture(gl.TEXTURE_2D, this.glnoise);
+  		gl.uniform1i(glp.i['u_noise'], 1);
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, this.gltexture);
+  		gl.uniform1i(glp.i['u_texture'], 0);
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+		gl.vertexAttribPointer(glp.i['a_position'], 3, gl.FLOAT, false, 0, 0);//0 stride means please calculate for me based on numComponents and type
+		gl.vertexAttribPointer(glp.i['a_normal'], 3, gl.FLOAT, false, 0, this.quadCount*18*4);
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.tbuffer);
+		gl.vertexAttribPointer(glp.i['a_texcoord'], 2, gl.FLOAT, false, 0, 0);
+		gl.drawArrays(gl.TRIANGLES, 0, 12);
+		var glp = this.glStdProg;
+		gl.useProgram(glp.prog);
+		gl.uniformMatrix4fv(glp.i['u_cam_rot'], false, this.cam_rot.arr);
+		gl.uniformMatrix4fv(glp.i['u_cam_trs'], false, this.cam_trs.arr);
+		// Draw all solid-color no-detail polys
 		gl.bindTexture(gl.TEXTURE_2D, this.gltexture);
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
-		gl.vertexAttribPointer(this.a_position, 3, gl.FLOAT, false, 0, 0);//0 stride means please calculate for me based on numComponents and type
-		gl.vertexAttribPointer(this.a_normal, 3, gl.FLOAT, false, 0, this.quadCount*18*4);
+		gl.vertexAttribPointer(glp.i['a_position'], 3, gl.FLOAT, false, 0, 0);//0 stride means please calculate for me based on numComponents and type
+		gl.vertexAttribPointer(glp.i['a_normal'], 3, gl.FLOAT, false, 0, this.quadCount*18*4);
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.tbuffer);
-		gl.vertexAttribPointer(this.a_texcoord, 2, gl.FLOAT, false, 0, 0);
+		gl.vertexAttribPointer(glp.i['a_texcoord'], 2, gl.FLOAT, false, 0, 0);
 		gl.drawArrays(gl.TRIANGLES, 0, this.quadCount*6);
-
+		
 		Object.values(this.artDef).forEach(d => {
 			gl.bindTexture(gl.TEXTURE_2D, d.gltexture);
 			gl.bindBuffer(gl.ARRAY_BUFFER, d.vbuffer);
-			gl.vertexAttribPointer(me.a_position, 3, gl.FLOAT, false, 0, 0);//0 stride means please calculate for me based on numComponents and type
-			gl.vertexAttribPointer(me.a_normal, 3, gl.FLOAT, true, 0, d.points.length*4);
+			gl.vertexAttribPointer(glp.i['a_position'], 3, gl.FLOAT, false, 0, 0);//0 stride means please calculate for me based on numComponents and type
+			gl.vertexAttribPointer(glp.i['a_normal'], 3, gl.FLOAT, true, 0, d.points.length*4);
 			gl.bindBuffer(gl.ARRAY_BUFFER, d.tbuffer);
-			gl.vertexAttribPointer(me.a_texcoord, 2, gl.FLOAT, false, 0, 0);
+			gl.vertexAttribPointer(glp.i['a_texcoord'], 2, gl.FLOAT, false, 0, 0);
 			gl.drawArrays(gl.TRIANGLES, 0, d.points.length/3);
 		});
 		if(this.state["name"] != "S_EXAMINE"){
@@ -1835,25 +1905,6 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 			}
 		}
 	}
-	createProgram(vertex, fragment){
-		const gl = this.gl;
-		const ver = gl.createShader(gl.VERTEX_SHADER);
-		const frag = gl.createShader(gl.FRAGMENT_SHADER);
-		gl.shaderSource(ver, vertex);
-		gl.shaderSource(frag, fragment);
-		gl.compileShader(ver);
-		gl.compileShader(frag);
-		if(!gl.getShaderParameter(ver, gl.COMPILE_STATUS)){
-			E.e("Failed to compile vertex shader: "+gl.getShaderInfoLog(ver));
-		}
-		if(!gl.getShaderParameter(frag, gl.COMPILE_STATUS)){
-			E.e("Failed to compile fragment shader: "+gl.getShaderInfoLog(frag));
-		}
-		var program = gl.createProgram();
-		gl.attachShader(program, ver);
-		gl.attachShader(program, frag);
-		return program;
-	}
 	createTextureFromImage(image, canvas){//Modified from khronos group
 		const gl = this.gl;
 		const texture = gl.createTexture();
@@ -1866,20 +1917,14 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 			ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 			image = canvas;
 		}
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image); //Prefer to use RGBA8 and ignore the alpha yourself for better performance. (MDN Best practices)
 		gl.generateMipmap(gl.TEXTURE_2D);
 		gl.bindTexture(gl.TEXTURE_2D, null);
 		return texture;
 	}
 	addData(){
 		const gl = this.gl;
-		this.a_position = gl.getAttribLocation(this.program, 'a_position');//position array
-		this.a_normal = gl.getAttribLocation(this.program, 'a_normal');//normal array
-		this.a_texcoord = gl.getAttribLocation(this.program, 'a_texcoord');//texture coordinates
-		gl.enableVertexAttribArray(this.a_position);
-		gl.enableVertexAttribArray(this.a_normal);
-		gl.enableVertexAttribArray(this.a_texcoord);
-		var me = this;
+		const me = this;
 		// Bind normals and texture coordinates
 		Object.keys(this.artDef).forEach(k => {
 			var d = me.artDef[k];
@@ -1895,10 +1940,11 @@ class Gallery{//FIXME art tex dims should be in by 0.5, not 1
 }
 
 var loader = new recursiveLoader(GalleryOpts["GalleryDataRoot"]);
-var vertShader;
-loader.addTarget(GalleryOpts["VertShader"], 'TEXT', function(path, data){vertShader = data;});
-var fragShader;
-loader.addTarget(GalleryOpts["FragShader"], 'TEXT', function(path, data){fragShader = data;});
+var ogarShaders = {};
+loader.addTarget(GalleryOpts["StdVertShader"], 'TEXT', function(path, data, remainingload, totalload){ogarShaders["stdvert"] = data;drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);});
+loader.addTarget(GalleryOpts["StdFragShader"], 'TEXT', function(path, data, remainingload, totalload){ogarShaders["stdfrag"] = data;drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);});
+loader.addTarget(GalleryOpts["DetailVertShader"], 'TEXT', function(path, data, remainingload, totalload){ogarShaders["detailvert"] = data;drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);});
+loader.addTarget(GalleryOpts["DetailFragShader"], 'TEXT', function(path, data, remainingload, totalload){ogarShaders["detailfrag"] = data;drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);});
 var images = {};
 var audios = {};
 var gallerydata;
@@ -1924,8 +1970,9 @@ var gallerydata;
  * 
  */
 for(const icon of ["left-click", "play", "pause", "audio"]){
-	loader.addTarget(GalleryOpts["ResourceDir"]+icon+".svg", 'IMG', function(path, data){images["__"+icon] = data});
+	loader.addTarget(GalleryOpts["ResourceDir"]+icon+".svg", 'IMG', function(path, data, remainingload, totalload){images["__"+icon] = data;drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);});
 }
+loader.addTarget(GalleryOpts["ResourceDir"]+'64x64noise.png', 'IMG', function(path, data, remainingload, totalload){images["__noise"] = data;drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);});
 
 loader.addTarget(gallerydefpath, 'JSON', function(path, data){
 	gallerydata = data;
@@ -1933,7 +1980,7 @@ loader.addTarget(gallerydefpath, 'JSON', function(path, data){
 	Object.keys(data["art"]).forEach(k => {
 		loader.addTarget(data["art"][k]["texture"], 'IMG', function(path, data, remainingload, totalload){
 			images[k] = data;
-			drawLoading("Loading "+(totalload-remainingload)+"/"+totalload);
+			drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);
 		});
 	});
 	let audioSet = new Set();
@@ -1945,7 +1992,7 @@ loader.addTarget(gallerydefpath, 'JSON', function(path, data){
 	for(const aud of audioSet.values()){
 		loader.addTarget(aud, 'AUDIO', function(path, data, remainingload, totalload){
 			audios[aud] = data;
-			drawLoading("Loading "+(totalload-remainingload)+"/"+totalload);
+			drawLoading(1-remainingload/totalload, ""+(totalload-remainingload)+"/"+totalload);
 		});
 	}
 });

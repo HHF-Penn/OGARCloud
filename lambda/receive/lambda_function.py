@@ -100,7 +100,7 @@ SERVER_ERROR_RESPONSE = {'statusCode':500,'body':'{}'}
 def lambda_handler(event, context):
 	global UID, GOOD_RESPONSE, SERVER_ERROR_RESPONSE, dbconn
 	bodyjson = json.loads(event['body'])
-	if 'gallery' in bodyjson:
+	if 'register' in bodyjson:
 		ip = "unknown"
 		try:
 			ip = event['requestContext']['identity']['sourceIp']
